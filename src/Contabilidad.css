@@ -1,0 +1,23 @@
+.contabilidad {
+    padding: 20px;
+    margin: 10px;
+    color: #fff; /* Letras blancas */
+    line-height: 1.8;
+    font-size: 16px;
+  }
+  
+  .download-button {
+    background-color: #444; /* Botón oscuro */
+    color: #fff; /* Texto del botón en blanco */
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .download-button:hover {
+    background-color: #666; /* Color más claro al pasar el cursor */
+  }
+  

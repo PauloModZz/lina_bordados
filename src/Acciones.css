@@ -1,0 +1,50 @@
+.acciones {
+    color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  
+  .acciones h2 {
+    margin-bottom: 15px;
+  }
+  
+  select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    background-color: #444;
+    color: #fff;
+    border: none;
+    font-size: 14px;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .action-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #444;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .action-buttons button:hover {
+    background-color: #666;
+  }
+  
+  .action-buttons button[style*="red"] {
+    background-color: red;
+    color: white;
+  }
+  
+  .action-buttons button[style*="red"]:hover {
+    background-color: darkred;
+  }
+  

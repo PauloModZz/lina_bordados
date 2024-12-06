@@ -1,0 +1,47 @@
+/* Grid Layout principal */
+.parent {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+  height: 100vh;
+  width: 100vw;
+}
+
+.div1 {
+  grid-area: 1 / 1 / 6 / 2;
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+}
+
+/* Otros divs siguen igual */
+.div2 {
+  grid-area: 1 / 2 / 6 / 3;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+}
+.div3 {
+  grid-area: 1 / 3 / 5 / 4;
+  background-color: #3a3a3a;
+  border: 1px solid #333;
+}
+.div4 {
+  grid-area: 1 / 4 / 3 / 5;
+  background-color: #4a4a4a;
+  border: 1px solid #333;
+}
+.div5 {
+  grid-area: 3 / 4 / 5 / 5;
+  background-color: #5a5a5a;
+  border: 1px solid #333;
+}
+
+/* Evita interferencias: Estilos específicos del control */
+.control-container {
+  width: 100%; /* Ocupa todo el espacio de su div */
+  height: 100%; /* Asegura que se ajuste al contenedor */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

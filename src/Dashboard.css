@@ -1,0 +1,88 @@
+.dashboard {
+  padding: 20px;
+  color: #ffffff; /* Todos los textos en blanco */
+  max-height: 94%; /* Altura máxima igual al alto de la ventana */
+  overflow-y: auto; /* Habilitar el scroll vertical */
+  scrollbar-width: thin; /* Personalizar barra de scroll (solo Firefox) */
+  scrollbar-color: #666 #2a2a2a; /* Personalizar colores del scroll */
+}
+
+.order-container {
+  border: 1px solid #444; /* Oscuro pero con contraste */
+  margin-bottom: 15px;
+  border-radius: 5px;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1e1e1e; /* Fondo oscuro */
+  padding: 10px;
+  border-bottom: 1px solid #444;
+}
+
+.order-header h3 {
+  margin: 0;
+  color: #ffffff; /* Texto en blanco */
+}
+
+.order-header button {
+  padding: 5px 10px;
+  background-color: #b3b3b3; /* Botón gris claro */
+  color: #000; /* Texto oscuro para contraste */
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.order-header button:hover {
+  background-color: #999; /* Gris más oscuro al pasar el cursor */
+}
+
+.order-details {
+  padding: 10px;
+  background-color: #2a2a2a; /* Fondo gris oscuro */
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  color: #ffffff; /* Texto en blanco */
+}
+
+thead {
+  background-color: #333; /* Fondo oscuro */
+  color: #ffffff; /* Texto en blanco */
+}
+
+th,
+td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #444; /* Bordes oscuros */
+}
+
+tbody tr:nth-child(even) {
+  background-color: #3a3a3a; /* Gris oscuro alternado */
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #2a2a2a; /* Gris más oscuro */
+}
+
+/* Botón adicional para "Descargar" */
+.actions button {
+  padding: 5px 10px;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.actions button:hover {
+  background-color: #666;
+}
