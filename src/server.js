@@ -85,7 +85,7 @@ db.connect((err) => {
 
 // Obtener todos los pedidos
 // Obtener todos los pedidos
-app.get("/api/pedidos", (req, res) => {
+app.get("/api/pedidos", async (req, res) => {
   const query = `
     SELECT 
       p.id AS pedido_id, 
@@ -102,13 +102,10 @@ app.get("/api/pedidos", (req, res) => {
     LEFT JOIN items i ON p.id = i.pedido_id
   `;
 
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Error al obtener pedidos:", err);
-      return res.status(500).json({ error: "Error al obtener pedidos." });
-    }
+  try {
+    const { rows } = await pool.query(query);
 
-    const pedidos = results.reduce((acc, row) => {
+    const pedidos = rows.reduce((acc, row) => {
       const pedidoId = row.pedido_id;
 
       if (!acc[pedidoId]) {
@@ -137,11 +134,14 @@ app.get("/api/pedidos", (req, res) => {
     }, {});
 
     res.json(Object.values(pedidos));
-  });
+  } catch (err) {
+    console.error("Error al obtener pedidos:", err);
+    res.status(500).json({ error: "Error al obtener pedidos." });
+  }
 });
 
 // Obtener un pedido por ID
-app.get("/api/pedidos/:id", (req, res) => {
+app.get("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
 
   const query = `
@@ -149,20 +149,17 @@ app.get("/api/pedidos/:id", (req, res) => {
            i.id AS item_id, i.modelo, i.cantidad, i.variaciones, i.subtotal
     FROM pedidos p
     LEFT JOIN items i ON p.id = i.pedido_id
-    WHERE p.id = ?
+    WHERE p.id = $1
   `;
 
-  db.query(query, [id], (err, results) => {
-    if (err) {
-      console.error("Error al obtener el pedido:", err);
-      return res.status(500).json({ error: "Error al obtener el pedido." });
-    }
+  try {
+    const { rows } = await pool.query(query, [id]);
 
-    if (results.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
-    const pedido = results.reduce(
+    const pedido = rows.reduce(
       (acc, row) => {
         if (!acc.id) {
           acc.id = row.pedido_id;
@@ -189,11 +186,14 @@ app.get("/api/pedidos/:id", (req, res) => {
     );
 
     res.json(pedido);
-  });
+  } catch (err) {
+    console.error("Error al obtener el pedido:", err);
+    res.status(500).json({ error: "Error al obtener el pedido." });
+  }
 });
 
 // Crear un nuevo pedido
-app.post("/api/pedidos", (req, res) => {
+app.post("/api/pedidos", async (req, res) => {
   const { total, estado } = req.body;
 
   if (!total || !estado) {
@@ -202,20 +202,23 @@ app.post("/api/pedidos", (req, res) => {
 
   const query = `
     INSERT INTO pedidos (total, estado)
-    VALUES (?, ?)
+    VALUES ($1, $2)
+    RETURNING id
   `;
 
-  db.query(query, [total, estado], (err, result) => {
-    if (err) {
-      console.error("Error al crear el pedido:", err);
-      return res.status(500).json({ error: "Error al crear el pedido." });
-    }
-    res.json({ id: result.insertId, nombre: `Pedido #${result.insertId}` });
-  });
+  try {
+    const { rows } = await pool.query(query, [total, estado]);
+    const newPedidoId = rows[0].id;
+
+    res.json({ id: newPedidoId, nombre: `Pedido #${newPedidoId}` });
+  } catch (err) {
+    console.error("Error al crear el pedido:", err);
+    res.status(500).json({ error: "Error al crear el pedido." });
+  }
 });
 
 // Agregar un ítem a un pedido
-app.post("/api/items", (req, res) => {
+app.post("/api/items", async (req, res) => {
   const { pedidoId, modelo, cantidad, variaciones, material, subtotal } = req.body;
 
   if (!pedidoId || !modelo || !cantidad || !subtotal || !material) {
@@ -224,187 +227,27 @@ app.post("/api/items", (req, res) => {
 
   const query = `
     INSERT INTO items (pedido_id, modelo, cantidad, variaciones, material, subtotal)
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES ($1, $2, $3, $4, $5, $6)
   `;
 
-  db.query(query, [pedidoId, modelo, cantidad, variaciones, material, subtotal], (err) => {
-    if (err) {
-      console.error("Error al agregar el ítem:", err);
-      return res.status(500).json({ error: "Error al agregar el ítem." });
-    }
+  try {
+    await pool.query(query, [pedidoId, modelo, cantidad, variaciones, material, subtotal]);
+
+    // Actualizar el total del pedido después de agregar el ítem
+    const updateTotalQuery = `
+      UPDATE pedidos
+      SET total = (SELECT SUM(subtotal) FROM items WHERE pedido_id = $1)
+      WHERE id = $1
+    `;
+
+    await pool.query(updateTotalQuery, [pedidoId]);
+
     res.json({ message: "Ítem agregado correctamente." });
-  });
+  } catch (err) {
+    console.error("Error al agregar el ítem:", err);
+    res.status(500).json({ error: "Error al agregar el ítem." });
+  }
 });
-
-// Actualizar estado de un pedido
-app.put("/api/pedidos/:id", (req, res) => {
-  const { id } = req.params;
-  const { estado } = req.body;
-
-  if (!estado) {
-    return res.status(400).json({ error: "El estado es obligatorio." });
-  }
-
-  const query = `
-    UPDATE pedidos
-    SET estado = ?
-    WHERE id = ?
-  `;
-
-  db.query(query, [estado, id], (err, result) => {
-    if (err) {
-      console.error("Error al actualizar el pedido:", err);
-      return res.status(500).json({ error: "Error al actualizar el pedido." });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
-    res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
-  });
-});
-
-app.put("/api/items/:id", (req, res) => {
-  const { id } = req.params;
-  const { cantidad, variaciones, material } = req.body;
-
-  // Verifica que al menos uno de los campos a actualizar esté presente
-  if (!cantidad && !variaciones && !material) {
-    return res.status(400).json({
-      error: "Debe proporcionar cantidad, variaciones o material para actualizar.",
-    });
-  }
-
-  const updates = [];
-  const values = [];
-
-  // Si se proporciona cantidad, agrégala al conjunto de actualizaciones
-  if (cantidad) {
-    updates.push("cantidad = ?");
-    values.push(cantidad);
-  }
-
-  // Si se proporciona variaciones, agrégala al conjunto de actualizaciones
-  if (variaciones) {
-    updates.push("variaciones = ?");
-    values.push(variaciones);
-  }
-
-  // Si se proporciona material, agrégalo al conjunto de actualizaciones
-  if (material) {
-    updates.push("material = ?");
-    values.push(material);
-  }
-
-  const query = `
-    UPDATE items
-    SET ${updates.join(", ")}
-    WHERE id = ?
-  `;
-
-  values.push(id);
-
-  // Actualizamos el ítem
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error("Error al actualizar el ítem:", err);
-      return res.status(500).json({ error: "Error al actualizar el ítem." });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Ítem no encontrado." });
-    }
-
-    // Recalcular el subtotal del ítem si se cambió la cantidad
-    if (cantidad) {
-      const getItemQuery = `SELECT pedido_id, modelo FROM items WHERE id = ?`;
-      db.query(getItemQuery, [id], (err, itemResults) => {
-        if (err || itemResults.length === 0) {
-          return res.status(500).json({
-            error: "Error al obtener el ítem después de la actualización.",
-          });
-        }
-
-        const { pedido_id, modelo } = itemResults[0];
-
-        // Define los precios por modelo
-        const modelPrices = {
-          "Modelo 1 enconchado": 2,
-          "Modelo 2 Filo fino": 2,
-          "Modelo Ovalado": 2,
-          "Modelo Navidad #1 arbol": 2.25,
-          "Modelo Navidad #2 Hojas": 2.5,
-          "Servilletas": 1,
-        };
-
-        const precio = modelPrices[modelo] || 0;
-        const nuevoSubtotal = cantidad * precio;
-
-        const updateSubtotalQuery = `
-          UPDATE items
-          SET subtotal = ?
-          WHERE id = ?
-        `;
-
-        db.query(updateSubtotalQuery, [nuevoSubtotal, id], (err) => {
-          if (err) {
-            console.error("Error al actualizar el subtotal del ítem:", err);
-            return res.status(500).json({
-              error: "Error al actualizar el subtotal del ítem.",
-            });
-          }
-
-          // Recalcular el total del pedido
-          const updatePedidoQuery = `
-            UPDATE pedidos
-            SET total = (SELECT SUM(subtotal) FROM items WHERE pedido_id = ?)
-            WHERE id = ?
-          `;
-          db.query(updatePedidoQuery, [pedido_id, pedido_id], (err) => {
-            if (err) {
-              console.error("Error al actualizar el total del pedido:", err);
-              return res.status(500).json({
-                error: "Error al actualizar el total del pedido.",
-              });
-            }
-
-            res.json({
-              message: "Ítem y total del pedido actualizados correctamente.",
-            });
-          });
-        });
-      });
-    } else {
-      res.json({ message: "Ítem actualizado correctamente." });
-    }
-  });
-});
-
-
-// Eliminar un pedido por ID
-app.delete("/api/pedidos/:id", (req, res) => {
-  const { id } = req.params;
-
-  const query = `
-    DELETE FROM pedidos
-    WHERE id = ?
-  `;
-
-  db.query(query, [id], (err, result) => {
-    if (err) {
-      console.error("Error al eliminar el pedido:", err);
-      return res.status(500).json({ error: "Error al eliminar el pedido." });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
-    res.json({ message: `Pedido #${id} eliminado correctamente.` });
-  });
-});
-
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
