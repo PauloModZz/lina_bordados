@@ -50,11 +50,16 @@ const Acciones = ({ onActionApply }) => {
       );
 
       if (response.ok) {
-        alert(`Pedido #${selectedPedido} marcado como ${action}.`);
+        const responseData = await response.json();
+        if (responseData.message) {
+          alert(responseData.message);
+        } else {
+          alert(`Pedido #${selectedPedido} marcado como ${action}.`);
+        }
         fetchPedidos(); // Actualiza la lista después de aplicar la acción
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        alert(`Error: ${errorData.error || "Error desconocido al actualizar el pedido."}`);
       }
     } catch (error) {
       console.error("Error al aplicar la acción:", error);
