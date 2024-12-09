@@ -8,22 +8,25 @@ const PORT = 5000;
 
 // Configuración de Supabase
 const SUPABASE_URL = "https://zbvvnhrrrdffwjvnxyuz.supabase.co";
-const SUPABASE_KEY = "TU_SUPABASE_KEY";  // Reemplaza con tu clave correcta
+const SUPABASE_KEY = "TU_SUPABASE_KEY";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// ==================== Endpoints ====================
+// Endpoints optimizados
 
-// Obtener todos los pedidos
+// Obtener todos los pedidos con ítems
 app.get("/api/pedidos", async (req, res) => {
   try {
     const { data: pedidos, error } = await supabase
       .from("pedidos")
       .select(`
-        id, fecha, total, estado,
+        id, 
+        fecha, 
+        total, 
+        estado,
         items (
           id, modelo, cantidad, variaciones, material, subtotal
         )
@@ -32,8 +35,11 @@ app.get("/api/pedidos", async (req, res) => {
     if (error) throw error;
 
     const formattedPedidos = pedidos.map((pedido) => ({
-      ...pedido,
+      id: pedido.id,
       nombre: `Pedido #${pedido.id}`,
+      fecha: pedido.fecha,
+      total: pedido.total,
+      estado: pedido.estado,
       items: pedido.items || [],
     }));
 
@@ -53,12 +59,9 @@ app.post("/api/pedidos", async (req, res) => {
   }
 
   try {
-    const { data, error } = await supabase
-      .from("pedidos")
-      .insert([{ total, estado }])
-      .select("id");
-
+    const { data, error } = await supabase.from("pedidos").insert([{ total, estado }]);
     if (error) throw error;
+
     res.status(201).json({ message: "Pedido creado exitosamente", data });
   } catch (err) {
     console.error("Error al crear el pedido:", err.message);
@@ -66,36 +69,7 @@ app.post("/api/pedidos", async (req, res) => {
   }
 });
 
-// Obtener un pedido por ID
-app.get("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { data: pedido, error } = await supabase
-      .from("pedidos")
-      .select(
-        `
-        id, fecha, total, estado,
-        items (
-          id, modelo, cantidad, variaciones, material, subtotal
-        )
-      `
-      )
-      .eq("id", id)
-      .single();
-
-    if (error || !pedido) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
-    res.json({ ...pedido, nombre: `Pedido #${pedido.id}` });
-  } catch (err) {
-    console.error("Error al obtener el pedido:", err.message);
-    res.status(500).json({ error: "Error al obtener el pedido." });
-  }
-});
-
-// Agregar un ítem a un pedido existente
+// Agregar un ítem a un pedido
 app.post("/api/items", async (req, res) => {
   const { pedidoId, modelo, cantidad, variaciones, material, subtotal } = req.body;
 
@@ -108,21 +82,17 @@ app.post("/api/items", async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("items")
-      .insert([
-        {
-          pedido_id: pedidoId,
-          modelo,
-          cantidad,
-          variaciones,
-          material,
-          subtotal,
-        },
-      ])
+      .insert([{ pedido_id: pedidoId, modelo, cantidad, variaciones, material, subtotal }])
       .select("id");
 
     if (error) throw error;
 
-    await supabase.rpc("update_pedido_total", { pedido_id_param: pedidoId });
+    const { error: totalError } = await supabase.rpc("update_pedido_total", {
+      pedido_id_param: pedidoId,
+    });
+
+    if (totalError) throw totalError;
+
     res.status(201).json({ message: "Ítem creado correctamente.", data });
   } catch (err) {
     console.error("Error al crear el ítem:", err.message);
@@ -130,7 +100,32 @@ app.post("/api/items", async (req, res) => {
   }
 });
 
-// Actualizar un ítem existente
+// Actualizar estado del pedido o ítem
+app.put("/api/pedidos/:id", async (req, res) => {
+  const { id } = req.params;
+  const { estado } = req.body;
+
+  if (!estado) {
+    return res.status(400).json({ error: "El estado es obligatorio." });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .update({ estado })
+      .eq("id", id)
+      .select();
+
+    if (error) throw error;
+
+    res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
+  } catch (err) {
+    console.error("Error al actualizar el pedido:", err.message);
+    res.status(500).json({ error: "Error al actualizar el pedido." });
+  }
+});
+
+// Actualizar ítem y recalcular total
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const { cantidad, material, variaciones } = req.body;
@@ -152,11 +147,13 @@ app.put("/api/items/:id", async (req, res) => {
       .eq("id", id)
       .select("pedido_id, cantidad, modelo");
 
-    if (error || !data.length) {
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return res.status(404).json({ error: "Ítem no encontrado." });
     }
 
     const pedidoId = data[0].pedido_id;
+    const modelo = data[0].modelo;
 
     const modelosPrecios = {
       "Modelo 1 enconchado": 2.0,
@@ -167,14 +164,21 @@ app.put("/api/items/:id", async (req, res) => {
       "Servilletas": 1.0,
     };
 
-    const nuevoSubtotal = modelosPrecios[data[0].modelo] * cantidad;
+    const nuevoSubtotal = modelosPrecios[modelo] * cantidad;
 
-    await supabase
+    const { error: subtotalError } = await supabase
       .from("items")
       .update({ subtotal: nuevoSubtotal })
       .eq("id", id);
 
-    await supabase.rpc("update_pedido_total", { pedido_id_param: pedidoId });
+    if (subtotalError) throw subtotalError;
+
+    const { error: totalError } = await supabase.rpc("update_pedido_total", {
+      pedido_id_param: pedidoId,
+    });
+
+    if (totalError) throw totalError;
+
     res.json({ message: "Ítem actualizado correctamente." });
   } catch (err) {
     console.error("Error al actualizar el ítem:", err.message);
@@ -193,7 +197,8 @@ app.delete("/api/pedidos/:id", async (req, res) => {
       .eq("id", id)
       .select("id");
 
-    if (error || !deletedPedido.length) {
+    if (error) throw error;
+    if (!deletedPedido.length) {
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
@@ -204,7 +209,7 @@ app.delete("/api/pedidos/:id", async (req, res) => {
   }
 });
 
-// ================== Iniciar el servidor ==================
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Base de datos funcionando en el puerto: ${PORT}`);
 });
