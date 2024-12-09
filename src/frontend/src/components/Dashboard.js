@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { toPng } from "html-to-image"; // Importar html-to-image
+import { toPng } from "html-to-image";
 import "./Dashboard.css";
 
-// URL del servidor en Render
 const API_URL = "https://lina-xc64.onrender.com";
 
 const Dashboard = () => {
-  const [orders, setOrders] = useState([]); 
-  const [expandedOrders, setExpandedOrders] = useState([]); 
+  const [orders, setOrders] = useState([]); // Lista de pedidos
 
   // Función para cargar pedidos desde la API
   const fetchOrders = async () => {
@@ -15,42 +13,52 @@ const Dashboard = () => {
       const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
 
-      // Formatear la fecha para cada pedido
-      const formattedOrders = data.map((order) => {
-        const dateObj = new Date(order.fecha); 
-        const optionsDate = { month: "2-digit", day: "2-digit", year: "numeric" };
-        const formattedDate = new Intl.DateTimeFormat("en-US", optionsDate).format(dateObj);
-        const totalCalculated = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+      // Formatear la fecha y mantener el orden
+      const formattedOrders = data
+        .map((order) => {
+          const dateObj = new Date(order.fecha);
+          const optionsDate = { month: "2-digit", day: "2-digit", year: "numeric" };
+          const formattedDate = new Intl.DateTimeFormat("en-US", optionsDate).format(dateObj);
+          const totalCalculated = order.items.reduce((sum, item) => sum + item.subtotal, 0);
 
-        return {
-          ...order,
-          formattedDate,
-          totalCalculated, 
-        };
+          return {
+            ...order,
+            formattedDate,
+            totalCalculated,
+          };
+        })
+        .sort((a, b) => a.id - b.id); // Ordenar por ID ascendente
+
+      setOrders((prevOrders) => {
+        return formattedOrders.map((order) => {
+          const prevOrder = prevOrders.find((o) => o.id === order.id);
+          return { ...order, expanded: prevOrder ? prevOrder.expanded : false };
+        });
       });
-
-      setOrders(formattedOrders); 
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
 
+  // Cargar pedidos al montar el componente y establecer intervalo
   useEffect(() => {
-    fetchOrders(); 
+    fetchOrders();
     const interval = setInterval(() => {
       fetchOrders();
-    }, 5000); 
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  // Alternar expansión de un pedido
   const toggleExpand = (id) => {
-    setExpandedOrders((prevState) =>
-      prevState.includes(id)
-        ? prevState.filter((orderId) => orderId !== id)
-        : [...prevState, id]
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === id ? { ...order, expanded: !order.expanded } : order
+      )
     );
   };
 
+  // Función para actualizar la cantidad de un ítem
   const handleEditQuantity = async (itemId, newQuantity) => {
     try {
       const response = await fetch(`${API_URL}/api/items/${itemId}`, {
@@ -61,7 +69,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Cantidad actualizada correctamente.");
-        fetchOrders(); 
+        fetchOrders(); // Actualizar lista de pedidos
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -72,6 +80,7 @@ const Dashboard = () => {
     }
   };
 
+  // Función para actualizar el material de un ítem
   const handleEditMaterial = async (itemId, currentMaterial) => {
     const newMaterial = prompt("Introduce el nuevo material:", currentMaterial);
     if (!newMaterial) return;
@@ -85,7 +94,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Material actualizado correctamente.");
-        fetchOrders(); 
+        fetchOrders(); // Actualizar lista de pedidos
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -96,6 +105,7 @@ const Dashboard = () => {
     }
   };
 
+  // Función para actualizar las variaciones de un ítem
   const handleEditVariations = async (itemId, currentVariations) => {
     const variationsArray = currentVariations.split(", ").map((variation) => {
       const [label, color] = variation.split(": ");
@@ -118,7 +128,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Variaciones actualizadas correctamente.");
-        fetchOrders(); 
+        fetchOrders(); // Actualizar lista de pedidos
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -129,6 +139,7 @@ const Dashboard = () => {
     }
   };
 
+  // Función para descargar la tabla de un pedido como PNG
   const handleDownloadTable = (orderId) => {
     const tableElement = document.getElementById(`table-${orderId}`);
     if (tableElement) {
@@ -174,11 +185,11 @@ const Dashboard = () => {
                 Descargar
               </button>
               <button onClick={() => toggleExpand(order.id)}>
-                {expandedOrders.includes(order.id) ? "Minimizar" : "Maximizar"}
+                {order.expanded ? "Minimizar" : "Maximizar"}
               </button>
             </div>
           </div>
-          {expandedOrders.includes(order.id) && (
+          {order.expanded && (
             <div className="order-details scrollable-table">
               <p><strong>Fecha:</strong> {order.formattedDate}</p>
               <p><strong>Total:</strong> ${order.totalCalculated.toFixed(2)}</p>
