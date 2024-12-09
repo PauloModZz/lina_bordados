@@ -13,30 +13,31 @@ const Dashboard = () => {
       const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
 
-      const formattedOrders = data
-        .map((order) => {
-          const dateObj = new Date(order.fecha);
-          const optionsDate = { month: "2-digit", day: "2-digit", year: "numeric" };
-          const formattedDate = new Intl.DateTimeFormat("en-US", optionsDate).format(dateObj);
+      const formattedOrders = data.map((order) => {
+        const dateObj = new Date(order.fecha);
+        const optionsDate = { month: "2-digit", day: "2-digit", year: "numeric" };
+        const formattedDate = new Intl.DateTimeFormat("en-US", optionsDate).format(dateObj);
 
-          // Calcular total asegurando valores válidos
-          const totalCalculated = order.items?.reduce(
-            (sum, item) => sum + (item.subtotal || 0),
-            0
-          );
+        const totalCalculated = order.items?.reduce(
+          (sum, item) => sum + (item.subtotal || 0),
+          0
+        );
 
-          return {
-            ...order,
-            formattedDate,
-            totalCalculated: totalCalculated || 0,
-          };
-        })
-        .sort((a, b) => a.id - b.id);
+        return {
+          ...order,
+          formattedDate,
+          totalCalculated: totalCalculated || 0,
+        };
+      });
 
       setOrders((prevOrders) =>
-        formattedOrders.map((order) => {
-          const prevOrder = prevOrders.find((o) => o.id === order.id);
-          return { ...order, expanded: prevOrder ? prevOrder.expanded : false };
+        prevOrders.map((prevOrder) => {
+          const updatedOrder = formattedOrders.find(
+            (order) => order.id === prevOrder.id
+          );
+          return updatedOrder
+            ? { ...updatedOrder, expanded: prevOrder.expanded }
+            : prevOrder;
         })
       );
     } catch (error) {
@@ -75,7 +76,19 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert(`${label} actualizado correctamente.`);
-        await fetchOrders(); // Asegurar la actualización después del cambio
+        const updatedResponse = await fetch(`${API_URL}/api/pedidos`);
+        const updatedData = await updatedResponse.json();
+
+        setOrders((prevOrders) =>
+          prevOrders.map((prevOrder) => {
+            const updatedOrder = updatedData.find(
+              (order) => order.id === prevOrder.id
+            );
+            return updatedOrder
+              ? { ...updatedOrder, expanded: prevOrder.expanded }
+              : prevOrder;
+          })
+        );
       } else {
         const errorData = await response.json();
         alert(`Error al actualizar: ${errorData.error}`);
@@ -202,9 +215,7 @@ const Dashboard = () => {
                       >
                         {item.variaciones || "Sin variaciones"}
                       </td>
-                      <td>
-                        ${item.subtotal?.toFixed(2) || "0.00"}
-                      </td>
+                      <td>${item.subtotal?.toFixed(2) || "0.00"}</td>
                     </tr>
                   ))}
                 </tbody>
