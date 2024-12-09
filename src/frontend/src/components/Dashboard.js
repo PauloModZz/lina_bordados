@@ -54,33 +54,35 @@ const Dashboard = () => {
     );
   };
 
-  const handleEditField = async (itemId, field, currentValue, label) => {
-    const newValue = prompt(`Introduce el nuevo ${label}:`, currentValue);
+  // Actualizar campos desde el Dashboard
+const handleEditField = async (itemId, field, currentValue, label) => {
+  const newValue = prompt(`Introduce el nuevo ${label}:`, currentValue);
 
-    if (!newValue || newValue.trim() === "") {
-      alert(`${label} no puede estar vacío.`);
-      return;
+  if (!newValue || newValue.trim() === "") {
+    alert(`${label} no puede estar vacío.`);
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/items/${itemId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: newValue.trim() }),
+    });
+
+    if (response.ok) {
+      alert(`${label} actualizado correctamente.`);
+      fetchOrders(); // Refrescar pedidos
+    } else {
+      const errorData = await response.json();
+      alert(`Error al actualizar: ${errorData.error}`);
     }
+  } catch (error) {
+    console.error(`Error al actualizar el ${label}:`, error);
+    alert(`No se pudo actualizar el ${label}.`);
+  }
+};
 
-    try {
-      const response = await fetch(`${API_URL}/api/items/${itemId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: newValue.trim() }),
-      });
-
-      if (response.ok) {
-        alert(`${label} actualizado correctamente.`);
-        fetchOrders();
-      } else {
-        const errorData = await response.json();
-        alert(`Error al actualizar: ${errorData.error}`);
-      }
-    } catch (error) {
-      console.error(`Error al actualizar el ${label}:`, error);
-      alert(`No se pudo actualizar el ${label}.`);
-    }
-  };
 
   const handleDownloadTable = (orderId) => {
     const tableElement = document.getElementById(`table-${orderId}`);

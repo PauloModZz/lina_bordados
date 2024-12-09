@@ -15,8 +15,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-//-------------------------------------------------------------------------------
-// Obtener todos los pedidos con ítems
+// ==========================================
+// ** CRUD DE PEDIDOS Y ÍTEMS **
+// ==========================================
+
+// ** Obtener todos los pedidos con ítems relacionados **
 app.get("/api/pedidos", async (req, res) => {
   try {
     const { data: pedidos, error } = await supabase
@@ -49,42 +52,39 @@ app.get("/api/pedidos", async (req, res) => {
   }
 });
 
-// Crear un nuevo pedido
-app.post("/api/pedidos", async (req, res) => {
-  const { total, estado } = req.body;
+// ** Crear un nuevo pedido y agregar ítem **
+app.post("/api/pedidos-con-item", async (req, res) => {
+  const { total, estado, modelo, cantidad, variaciones, material, subtotal } = req.body;
 
-  if (!total || !estado) {
-    return res.status(400).json({ error: "Total y estado son obligatorios." });
-  }
-
-  try {
-    const { data, error } = await supabase.from("pedidos").insert([{ total, estado }]);
-    if (error) throw error;
-
-    res.status(201).json({ message: "Pedido creado exitosamente", data });
-  } catch (err) {
-    console.error("Error al crear el pedido:", err.message);
-    res.status(500).json({ error: "Error al crear el pedido." });
-  }
-});
-
-// Agregar un ítem a un pedido
-app.post("/api/items", async (req, res) => {
-  const { pedidoId, modelo, cantidad, variaciones, material, subtotal } = req.body;
-
-  if (!pedidoId || !modelo || !cantidad || !material || !subtotal) {
+  if (!total || !estado || !modelo || !cantidad || !material || !subtotal) {
     return res.status(400).json({
-      error: "Todos los campos son obligatorios para crear un ítem.",
+      error: "Todos los campos son obligatorios para crear el pedido y el ítem.",
     });
   }
 
   try {
-    const { data, error } = await supabase
-      .from("items")
-      .insert([{ pedido_id: pedidoId, modelo, cantidad, variaciones, material, subtotal }])
+    const { data: pedido, error: pedidoError } = await supabase
+      .from("pedidos")
+      .insert([{ total, estado }])
       .select("id");
 
-    if (error) throw error;
+    if (pedidoError) throw pedidoError;
+    const pedidoId = pedido[0].id;
+
+    const { data: item, error: itemError } = await supabase
+      .from("items")
+      .insert([
+        {
+          pedido_id: pedidoId,
+          modelo,
+          cantidad,
+          variaciones,
+          material,
+          subtotal,
+        },
+      ]);
+
+    if (itemError) throw itemError;
 
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
       pedido_id_param: pedidoId,
@@ -92,39 +92,18 @@ app.post("/api/items", async (req, res) => {
 
     if (totalError) throw totalError;
 
-    res.status(201).json({ message: "Ítem creado correctamente.", data });
+    res.status(201).json({
+      message: "Pedido y primer ítem creados correctamente.",
+      pedidoId,
+      item,
+    });
   } catch (err) {
-    console.error("Error al crear el ítem:", err.message);
-    res.status(500).json({ error: "Error al crear el ítem." });
+    console.error("Error al crear el pedido y el ítem:", err.message);
+    res.status(500).json({ error: "Error al crear el pedido y el ítem." });
   }
 });
 
-// Actualizar estado del pedido o ítem
-app.put("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params;
-  const { estado } = req.body;
-
-  if (!estado) {
-    return res.status(400).json({ error: "El estado es obligatorio." });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("pedidos")
-      .update({ estado })
-      .eq("id", id)
-      .select();
-
-    if (error) throw error;
-
-    res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
-  } catch (err) {
-    console.error("Error al actualizar el pedido:", err.message);
-    res.status(500).json({ error: "Error al actualizar el pedido." });
-  }
-});
-
-// Actualizar ítem y recalcular total
+// ** Actualizar un ítem y recalcular el total **
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const { cantidad, material, variaciones } = req.body;
@@ -144,7 +123,7 @@ app.put("/api/items/:id", async (req, res) => {
         ...(variaciones && { variaciones }),
       })
       .eq("id", id)
-      .select("pedido_id, cantidad, modelo");
+      .select("pedido_id, modelo, cantidad");
 
     if (error) throw error;
     if (!data || data.length === 0) {
@@ -153,6 +132,7 @@ app.put("/api/items/:id", async (req, res) => {
 
     const pedidoId = data[0].pedido_id;
     const modelo = data[0].modelo;
+    const nuevaCantidad = data[0].cantidad;
 
     const modelosPrecios = {
       "Modelo 1 enconchado": 2.0,
@@ -163,7 +143,7 @@ app.put("/api/items/:id", async (req, res) => {
       "Servilletas": 1.0,
     };
 
-    const nuevoSubtotal = modelosPrecios[modelo] * cantidad;
+    const nuevoSubtotal = modelosPrecios[modelo] * nuevaCantidad;
 
     const { error: subtotalError } = await supabase
       .from("items")
@@ -185,7 +165,7 @@ app.put("/api/items/:id", async (req, res) => {
   }
 });
 
-// Eliminar un pedido
+// ** Eliminar un pedido y sus ítems asociados **
 app.delete("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -197,6 +177,7 @@ app.delete("/api/pedidos/:id", async (req, res) => {
       .select("id");
 
     if (error) throw error;
+
     if (!deletedPedido.length) {
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
@@ -208,7 +189,7 @@ app.delete("/api/pedidos/:id", async (req, res) => {
   }
 });
 
-// Iniciar servidor
+// ** Iniciar el servidor **
 app.listen(PORT, () => {
-  console.log(`Base de datos funcionando en el puerto: ${PORT}`);
+  console.log(`Servidor funcionando en el puerto ${PORT}`);
 });
