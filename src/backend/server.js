@@ -337,11 +337,12 @@ app.post("/api/pedidos-con-item", async (req, res) => {
   }
 });
 // Actualizar ítem por ID
+// Actualizar un ítem y recalcular el total
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const { cantidad, material, variaciones } = req.body;
 
-  // Validar que al menos uno de los campos esté presente
+  // Validar campos requeridos
   if (!cantidad && !material && !variaciones) {
     return res.status(400).json({
       error: "Debe proporcionar cantidad, material o variaciones para actualizar.",
@@ -358,19 +359,17 @@ app.put("/api/items/:id", async (req, res) => {
         ...(variaciones && { variaciones }),
       })
       .eq("id", id)
-      .select("pedido_id");  // Selecciona explícitamente "pedido_id"
+      .select("pedido_id");
 
     if (error) throw error;
-
     if (!data || data.length === 0) {
       return res.status(404).json({ error: "Ítem no encontrado." });
     }
 
-    // Llamar al procedimiento almacenado
+    // Obtener pedido_id y actualizar el total
     const pedidoId = data[0].pedido_id;
-
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
-      pedido_id_param: pedidoId,  // Asegúrate de que el nombre coincida con el parámetro en SQL
+      pedido_id_param: pedidoId,
     });
 
     if (totalError) throw totalError;
