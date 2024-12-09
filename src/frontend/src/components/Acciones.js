@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./Acciones.css";
 
-// URL base de la API
 const API_URL = "https://lina-xc64.onrender.com";
 
 const Acciones = ({ onActionApply }) => {
@@ -13,24 +12,19 @@ const Acciones = ({ onActionApply }) => {
     try {
       const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
-      setPedidos(data);
+
+      // Ordenar pedidos por ID para mantener el orden consistente
+      const sortedPedidos = data.sort((a, b) => a.id - b.id);
+      setPedidos(sortedPedidos);
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
 
-  // useEffect para cargar los pedidos periódicamente
+  // useEffect para cargar los pedidos al inicio
   useEffect(() => {
-    fetchPedidos(); // Carga inicial
-
-    // Configura un intervalo para actualizar los pedidos cada 5 segundos
-    const interval = setInterval(() => {
-      fetchPedidos();
-    }, 5000);
-
-    // Limpia el intervalo al desmontar el componente
-    return () => clearInterval(interval);
-  }, []);
+    fetchPedidos();
+  }, []); // Se elimina el intervalo para evitar actualizaciones innecesarias
 
   // Manejar acciones de cambio de estado
   const handleAction = async (action) => {
@@ -59,7 +53,11 @@ const Acciones = ({ onActionApply }) => {
         fetchPedidos(); // Actualiza la lista después de aplicar la acción
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || "Error desconocido al actualizar el pedido."}`);
+        alert(
+          `Error: ${
+            errorData.error || "Error desconocido al actualizar el pedido."
+          }`
+        );
       }
     } catch (error) {
       console.error("Error al aplicar la acción:", error);
@@ -74,7 +72,11 @@ const Acciones = ({ onActionApply }) => {
       return;
     }
 
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar el pedido #${selectedPedido}?`)) {
+    if (
+      !window.confirm(
+        `¿Estás seguro de que deseas eliminar el pedido #${selectedPedido}?`
+      )
+    ) {
       return;
     }
 
@@ -124,7 +126,9 @@ const Acciones = ({ onActionApply }) => {
         <button onClick={() => handleAction("Entregado")}>
           Marcar como Entregado
         </button>
-        <button onClick={() => handleAction("Pagado")}>Marcar como Pagado</button>
+        <button onClick={() => handleAction("Pagado")}>
+          Marcar como Pagado
+        </button>
         <button
           onClick={handleDelete}
           style={{
