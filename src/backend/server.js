@@ -23,59 +23,39 @@ app.get("/", (req, res) => {
 
 
 app.get("/api/pedidos", async (req, res) => {
-  const query = `
-    SELECT 
-      p.id AS pedido_id, 
-      p.fecha, 
-      p.total, 
-      p.estado,
-      i.id AS item_id, 
-      i.modelo, 
-      i.cantidad, 
-      i.variaciones, 
-      i.material, 
-      i.subtotal
-    FROM pedidos p
-    LEFT JOIN items i ON p.id = i.pedido_id
-  `;
-
   try {
-    const { rows } = await pool.query(query);
+    // Selecciona pedidos e incluye los ítems relacionados
+    const { data: pedidos, error } = await supabase
+      .from("pedidos")
+      .select(`
+        id, 
+        fecha, 
+        total, 
+        estado,
+        items (
+          id, modelo, cantidad, variaciones, material, subtotal
+        )
+      `);
 
-    const pedidos = rows.reduce((acc, row) => {
-      const pedidoId = row.pedido_id;
+    if (error) throw error;
 
-      if (!acc[pedidoId]) {
-        acc[pedidoId] = {
-          id: pedidoId,
-          nombre: `Pedido #${pedidoId}`,
-          fecha: row.fecha,
-          total: row.total,
-          estado: row.estado,
-          items: [],
-        };
-      }
+    // Formatea la respuesta para añadir un nombre a cada pedido
+    const formattedPedidos = pedidos.map((pedido) => ({
+      id: pedido.id,
+      nombre: `Pedido #${pedido.id}`,
+      fecha: pedido.fecha,
+      total: pedido.total,
+      estado: pedido.estado,
+      items: pedido.items || [], // Asegúrate de que los ítems existan
+    }));
 
-      if (row.item_id) {
-        acc[pedidoId].items.push({
-          id: row.item_id,
-          modelo: row.modelo,
-          cantidad: row.cantidad,
-          variaciones: row.variaciones,
-          material: row.material,
-          subtotal: row.subtotal,
-        });
-      }
-
-      return acc;
-    }, {});
-
-    res.json(Object.values(pedidos));
+    res.json(formattedPedidos);
   } catch (err) {
-    console.error("Error al obtener pedidos:", err);
+    console.error("Error al obtener pedidos:", err.message);
     res.status(500).json({ error: "Error al obtener pedidos." });
   }
 });
+
 
 // Obtener un pedido por ID
 app.get("/api/pedidos/:id", async (req, res) => {
@@ -137,19 +117,13 @@ app.post("/api/pedidos", async (req, res) => {
     return res.status(400).json({ error: "Total y estado son obligatorios." });
   }
 
-  const query = `
-    INSERT INTO pedidos (total, estado)
-    VALUES ($1, $2)
-    RETURNING id
-  `;
-
   try {
-    const { rows } = await pool.query(query, [total, estado]);
-    const newPedidoId = rows[0].id;
+    const { data, error } = await supabase.from("pedidos").insert([{ total, estado }]);
+    if (error) throw error;
 
-    res.json({ id: newPedidoId, nombre: `Pedido #${newPedidoId}` });
+    res.status(201).json({ message: "Pedido creado exitosamente", data });
   } catch (err) {
-    console.error("Error al crear el pedido:", err);
+    console.error("Error al crear el pedido:", err.message);
     res.status(500).json({ error: "Error al crear el pedido." });
   }
 });
