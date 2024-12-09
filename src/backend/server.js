@@ -25,6 +25,12 @@ const pool = new Pool({
 
 
 // Obtener todos los pedidos
+
+app.get("/", (req, res) => {
+  res.send("Servidor funcionando correctamente en Render 🚀");
+});
+
+
 app.get("/api/pedidos", async (req, res) => {
   const query = `
     SELECT 
