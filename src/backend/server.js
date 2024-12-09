@@ -12,12 +12,15 @@ app.use(bodyParser.json());
 
 // Configuración de conexión a la base de datos PostgreSQL (usa tus datos de Supabase)
 const pool = new Pool({
-  host: "aws-0-us-west-1.pooler.supabase.com",   // Reemplaza con tu valor real
-  user: "postgres.zbvnhrrrrdfrwjnxyuz",          // Reemplaza con tu valor real
-  password: "AkSkqm30JncAT2Ze",                  // Reemplaza con tu valor real
-  database: "postgres",                          // Reemplaza con tu valor real
-  port: 6543,                                    // Reemplaza con tu valor real
-  ssl: { rejectUnauthorized: true },            // Habilita SSL
+  host: "aws-0-us-west-1.pooler.supabase.com",
+  user: "postgres.zbvnhrrrrdfrwjnxyuz",
+  password: "AkSkqm30JncAT2Ze",
+  database: "postgres",
+  port: 6543,
+  ssl: {
+    rejectUnauthorized: false, // Ignorar certificados autofirmados
+    ca: "" // Agregar esta línea para forzar la conexión
+  },
 });
 
 
