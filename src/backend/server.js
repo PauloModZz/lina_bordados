@@ -18,7 +18,6 @@ app.use(bodyParser.json());
 // ==========================================
 // ** CRUD DE PEDIDOS Y ÍTEMS **
 // ==========================================
-
 // ** Obtener todos los pedidos con ítems relacionados **
 app.get("/api/pedidos", async (req, res) => {
   try {
@@ -51,7 +50,38 @@ app.get("/api/pedidos", async (req, res) => {
     res.status(500).json({ error: "Error al obtener pedidos." });
   }
 });
+// ** Actualizar el estado del pedido **
+app.put("/api/pedidos/:id", async (req, res) => {
+  const { id } = req.params; // ID del pedido a actualizar
+  const { estado } = req.body; // Nuevo estado para el pedido
 
+  if (!estado) {
+    return res.status(400).json({ error: "El estado es obligatorio." });
+  }
+
+  try {
+    // Actualizar el estado en Supabase
+    const { data, error } = await supabase
+      .from("pedidos")
+      .update({ estado })
+      .eq("id", id)
+      .select("id, estado");
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado." });
+    }
+
+    res.json({
+      message: `Pedido #${id} actualizado a estado ${estado}.`,
+      data,
+    });
+  } catch (err) {
+    console.error("Error al actualizar el pedido:", err.message);
+    res.status(500).json({ error: "Error al actualizar el pedido." });
+  }
+});
 // ** Crear un nuevo pedido y agregar ítem **
 app.post("/api/pedidos-con-item", async (req, res) => {
   const { total, estado, modelo, cantidad, variaciones, material, subtotal } = req.body;
@@ -102,7 +132,29 @@ app.post("/api/pedidos-con-item", async (req, res) => {
     res.status(500).json({ error: "Error al crear el pedido y el ítem." });
   }
 });
+// ** Eliminar un pedido y sus ítems asociados **
+app.delete("/api/pedidos/:id", async (req, res) => {
+  const { id } = req.params;
 
+  try {
+    const { data: deletedPedido, error } = await supabase
+      .from("pedidos")
+      .delete()
+      .eq("id", id)
+      .select("id");
+
+    if (error) throw error;
+
+    if (!deletedPedido.length) {
+      return res.status(404).json({ error: "Pedido no encontrado." });
+    }
+
+    res.json({ message: `Pedido #${id} eliminado correctamente.` });
+  } catch (err) {
+    console.error("Error al eliminar el pedido:", err.message);
+    res.status(500).json({ error: "Error al eliminar el pedido." });
+  }
+});
 // ** Actualizar un ítem y recalcular el total **
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
@@ -164,7 +216,6 @@ app.put("/api/items/:id", async (req, res) => {
     res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
-
 // ** Agregar un ítem a un pedido existente **
 app.post("/api/items", async (req, res) => {
   const { pedidoId, modelo, cantidad, variaciones, material } = req.body;
@@ -226,32 +277,6 @@ app.post("/api/items", async (req, res) => {
     res.status(500).json({ error: "Error al agregar el ítem." });
   }
 });
-
-
-// ** Eliminar un pedido y sus ítems asociados **
-app.delete("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { data: deletedPedido, error } = await supabase
-      .from("pedidos")
-      .delete()
-      .eq("id", id)
-      .select("id");
-
-    if (error) throw error;
-
-    if (!deletedPedido.length) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
-    res.json({ message: `Pedido #${id} eliminado correctamente.` });
-  } catch (err) {
-    console.error("Error al eliminar el pedido:", err.message);
-    res.status(500).json({ error: "Error al eliminar el pedido." });
-  }
-});
-
 // ** Iniciar el servidor **
 app.listen(PORT, () => {
   console.log(`Servidor funcionando en el puerto ${PORT}`);
