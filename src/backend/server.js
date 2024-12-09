@@ -6,9 +6,6 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = 5000;
 
-// URL de Render
-const API_URL = "https://lina-bordados.onrender.com";
-
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());

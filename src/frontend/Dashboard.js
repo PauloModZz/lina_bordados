@@ -2,53 +2,47 @@ import React, { useState, useEffect } from "react";
 import { toPng } from "html-to-image"; // Importar html-to-image
 import "./Dashboard.css";
 
+// URL del servidor en Render
+const API_URL = "https://lina-xc64.onrender.com";
+
 const Dashboard = () => {
-  const [orders, setOrders] = useState([]); // Pedidos inicializados vacíos
-  const [expandedOrders, setExpandedOrders] = useState([]); // Control de expansión
+  const [orders, setOrders] = useState([]); 
+  const [expandedOrders, setExpandedOrders] = useState([]); 
 
   // Función para cargar pedidos desde la API
   const fetchOrders = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/pedidos"); // URL de la API
+      const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
 
       // Formatear la fecha para cada pedido
       const formattedOrders = data.map((order) => {
-        const dateObj = new Date(order.fecha); // Convertir a objeto Date
+        const dateObj = new Date(order.fecha); 
         const optionsDate = { month: "2-digit", day: "2-digit", year: "numeric" };
-
         const formattedDate = new Intl.DateTimeFormat("en-US", optionsDate).format(dateObj);
-
-        // Calcular el total dinámicamente sumando subtotales de los ítems
         const totalCalculated = order.items.reduce((sum, item) => sum + item.subtotal, 0);
 
         return {
           ...order,
           formattedDate,
-          totalCalculated, // Total calculado dinámicamente
+          totalCalculated, 
         };
       });
 
-      setOrders(formattedOrders); // Actualizamos los pedidos con la fecha formateada
+      setOrders(formattedOrders); 
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
 
-  // useEffect para cargar los pedidos al montar el componente y actualizarlos periódicamente
   useEffect(() => {
-    fetchOrders(); // Cargar pedidos al montar
-
-    // Configurar intervalo para actualizaciones automáticas
+    fetchOrders(); 
     const interval = setInterval(() => {
       fetchOrders();
-    }, 5000); // Actualizar cada 5 segundos
-
-    // Limpiar el intervalo al desmontar el componente
+    }, 5000); 
     return () => clearInterval(interval);
   }, []);
 
-  // Función para alternar la expansión/minimización
   const toggleExpand = (id) => {
     setExpandedOrders((prevState) =>
       prevState.includes(id)
@@ -57,10 +51,9 @@ const Dashboard = () => {
     );
   };
 
-  // Manejar la edición de la cantidad en un ítem
   const handleEditQuantity = async (itemId, newQuantity) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/items/${itemId}`, {
+      const response = await fetch(`${API_URL}/api/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cantidad: newQuantity }),
@@ -68,7 +61,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Cantidad actualizada correctamente.");
-        fetchOrders(); // Recargar los pedidos después de la actualización
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -79,15 +72,12 @@ const Dashboard = () => {
     }
   };
 
-  // Manejar la edición del material
   const handleEditMaterial = async (itemId, currentMaterial) => {
     const newMaterial = prompt("Introduce el nuevo material:", currentMaterial);
-    if (!newMaterial) {
-      return;
-    }
+    if (!newMaterial) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/items/${itemId}`, {
+      const response = await fetch(`${API_URL}/api/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ material: newMaterial }),
@@ -95,7 +85,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Material actualizado correctamente.");
-        fetchOrders(); // Recargar los pedidos después de la actualización
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -106,7 +96,6 @@ const Dashboard = () => {
     }
   };
 
-  // Manejar la edición de las variaciones en un ítem
   const handleEditVariations = async (itemId, currentVariations) => {
     const variationsArray = currentVariations.split(", ").map((variation) => {
       const [label, color] = variation.split(": ");
@@ -121,7 +110,7 @@ const Dashboard = () => {
     const formattedVariations = newVariations.join(", ");
 
     try {
-      const response = await fetch(`http://localhost:5000/api/items/${itemId}`, {
+      const response = await fetch(`${API_URL}/api/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variaciones: formattedVariations }),
@@ -129,7 +118,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Variaciones actualizadas correctamente.");
-        fetchOrders(); // Recargar los pedidos después de la actualización
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
         alert(`Error: ${errorData.error}`);
@@ -140,7 +129,6 @@ const Dashboard = () => {
     }
   };
 
-  // Función para descargar la tabla como imagen
   const handleDownloadTable = (orderId) => {
     const tableElement = document.getElementById(`table-${orderId}`);
     if (tableElement) {
@@ -157,7 +145,6 @@ const Dashboard = () => {
     }
   };
 
-  // Función para obtener el símbolo/emoji según el estado
   const getEmojiForStatus = (estado) => {
     switch (estado) {
       case "Pendiente":
@@ -193,15 +180,9 @@ const Dashboard = () => {
           </div>
           {expandedOrders.includes(order.id) && (
             <div className="order-details scrollable-table">
-              <p>
-                <strong>Fecha:</strong> {order.formattedDate}
-              </p>
-              <p>
-                <strong>Total:</strong> ${order.totalCalculated.toFixed(2)}
-              </p>
-              <p>
-                <strong>Estado:</strong> {order.estado}
-              </p>
+              <p><strong>Fecha:</strong> {order.formattedDate}</p>
+              <p><strong>Total:</strong> ${order.totalCalculated.toFixed(2)}</p>
+              <p><strong>Estado:</strong> {order.estado}</p>
               <table id={`table-${order.id}`}>
                 <thead>
                   <tr>
@@ -216,35 +197,9 @@ const Dashboard = () => {
                   {order.items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.modelo}</td>
-                      <td
-                        onDoubleClick={() => handleEditMaterial(item.id, item.material)}
-                      >
-                        {item.material || "Sin material"}
-                      </td>
-                      <td
-                        onDoubleClick={(e) => {
-                          const newQuantity = prompt(
-                            "Introduce la nueva cantidad:",
-                            item.cantidad
-                          );
-                          if (
-                            newQuantity &&
-                            !isNaN(newQuantity) &&
-                            parseInt(newQuantity, 10) > 0
-                          ) {
-                            handleEditQuantity(item.id, parseInt(newQuantity, 10));
-                          } else if (newQuantity) {
-                            alert("Por favor introduce un número válido.");
-                          }
-                        }}
-                      >
-                        {item.cantidad}
-                      </td>
-                      <td
-                        onDoubleClick={() => handleEditVariations(item.id, item.variaciones)}
-                      >
-                        {item.variaciones}
-                      </td>
+                      <td onDoubleClick={() => handleEditMaterial(item.id, item.material)}>{item.material || "Sin material"}</td>
+                      <td onDoubleClick={() => handleEditQuantity(item.id, parseInt(prompt("Nueva cantidad:", item.cantidad), 10))}>{item.cantidad}</td>
+                      <td onDoubleClick={() => handleEditVariations(item.id, item.variaciones)}>{item.variaciones}</td>
                       <td>${item.subtotal.toFixed(2)}</td>
                     </tr>
                   ))}
