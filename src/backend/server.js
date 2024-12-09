@@ -17,7 +17,7 @@ const pool = new Pool({
   password: "AkSkqm30JncAT2Ze",                  // Reemplaza con tu valor real
   database: "postgres",                          // Reemplaza con tu valor real
   port: 6543,                                    // Reemplaza con tu valor real
-  ssl: { rejectUnauthorized: false },            // Habilita SSL
+  ssl: { rejectUnauthorized: true },            // Habilita SSL
 });
 
 
