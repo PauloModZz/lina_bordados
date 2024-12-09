@@ -7,7 +7,12 @@ const API_URL = "https://lina-xc64.onrender.com";
 const Dashboard = () => {
   const [orders, setOrders] = useState([]);
 
-  // Cargar pedidos desde la API
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchOrders = async () => {
     try {
       const response = await fetch(`${API_URL}/api/pedidos`);
@@ -27,21 +32,19 @@ const Dashboard = () => {
           ...order,
           formattedDate,
           totalCalculated: totalCalculated || 0,
-          expanded: order.expanded || false,
         };
       });
 
-      setOrders(formattedOrders);
+      setOrders((prevOrders) =>
+        formattedOrders.map((order) => {
+          const prevOrder = prevOrders.find((o) => o.id === order.id);
+          return { ...order, expanded: prevOrder ? prevOrder.expanded : false };
+        })
+      );
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
-
-  useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   const toggleExpand = (id) => {
     setOrders((prevOrders) =>
@@ -68,7 +71,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert(`${label} actualizado correctamente.`);
-        fetchOrders(); 
+        fetchOrders();
       } else {
         const errorData = await response.json();
         alert(`Error al actualizar: ${errorData.error}`);
