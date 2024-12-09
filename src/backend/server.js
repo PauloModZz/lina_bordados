@@ -115,7 +115,8 @@ app.post("/api/items", async (req, res) => {
   }
 
   try {
-    const { data, error } = await supabase
+    // Inserta el ítem
+    const { data, error: insertError } = await supabase
       .from("items")
       .insert({
         pedido_id: pedidoId,
@@ -126,12 +127,16 @@ app.post("/api/items", async (req, res) => {
         subtotal,
       });
 
-    if (error) throw error;
+    console.log("Insert Response:", data, insertError);
 
-    // Actualizar el total del pedido
+    if (insertError) throw insertError;
+
+    // Actualiza el total del pedido
     const { error: updateError } = await supabase.rpc("update_pedido_total", {
       pedido_id: pedidoId,
     });
+
+    console.log("Update Total Response:", updateError);
 
     if (updateError) throw updateError;
 
@@ -141,6 +146,7 @@ app.post("/api/items", async (req, res) => {
     res.status(500).json({ error: "Error al agregar el ítem." });
   }
 });
+
 
 // Actualizar el estado de un pedido
 app.put("/api/pedidos/:id", async (req, res) => {
