@@ -165,16 +165,17 @@ app.put("/api/pedidos/:id", async (req, res) => {
 
     if (error) throw error;
 
-    if (data.length === 0) {
+    if (!data || data.length === 0) { // Valida si data es null o vacío
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
     res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
-    console.error("Error al actualizar el pedido:", err);
+    console.error("Error al actualizar el pedido:", err.message);
     res.status(500).json({ error: "Error al actualizar el pedido." });
   }
 });
+
 
 // Actualizar el ítem
 app.put("/api/items/:id", async (req, res) => {
