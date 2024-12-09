@@ -1,27 +1,33 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const { Pool } = require("pg");
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 const PORT = 5000;
+
+// Configuración de Supabase
+const SUPABASE_URL = "https://zbvvnhrrrdffwjvnxyuz.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpidnZuaHJycmRmZndqdm54eXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0NzU4NjIsImV4cCI6MjA0OTA1MTg2Mn0.2QvAtFoyn83RQq4I47OV11rLzeIYEFYmAJQ8sE_FOp8";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Configuración de conexión a la base de datos PostgreSQL (usa tus datos de Supabase)
-const pool = new Pool({
-  connectionString: "postgresql://postgres.zbvnhrrrrdfrwjnxyuz:AkSkqm30JncAT2Ze@aws-0-us-west-1.pooler.supabase.com:6543/postgres",
-  ssl: { rejectUnauthorized: false }, // Permite conexiones SSL sin verificar certificados
-});
+// Prueba de conexión
+app.get("/test-db", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("pedidos").select("*");
+    if (error) throw error;
 
-// Prueba inicial de conexión
-pool.query("SELECT NOW()", (err, res) => {
-  if (err) {
-    console.error("Error al conectar a la base de datos:", err);
-  } else {
-    console.log("Conexión exitosa a la base de datos:", res.rows);
+    res.json({
+      message: "Conexión exitosa",
+      pedidos: data,
+    });
+  } catch (err) {
+    console.error("Error al conectar a la base de datos:", err.message);
+    res.status(500).json({ error: "No se pudo conectar a la base de datos." });
   }
 });
 
