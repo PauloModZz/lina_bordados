@@ -270,6 +270,61 @@ app.delete("/api/pedidos/:id", async (req, res) => {
     res.status(500).json({ error: "Error al eliminar el pedido." });
   }
 });
+// Crear un nuevo pedido y agregar un ítem
+app.post("/api/pedidos-completo", async (req, res) => {
+  const { total, estado, modelo, cantidad, variaciones, material, subtotal } = req.body;
+
+  // Validar que los datos obligatorios estén presentes
+  if (!total || !estado || !modelo || !cantidad || !subtotal || !material) {
+    return res.status(400).json({
+      error: "Todos los campos son obligatorios, incluido el modelo, cantidad, y material.",
+    });
+  }
+
+  try {
+    // Crear el pedido
+    const { data: pedido, error: pedidoError } = await supabase
+      .from("pedidos")
+      .insert([{ total, estado }])
+      .select("id");
+
+    if (pedidoError) throw pedidoError;
+    const pedidoId = pedido[0].id;
+
+    // Crear el ítem asociado al pedido
+    const { data: item, error: itemError } = await supabase
+      .from("items")
+      .insert([
+        {
+          pedido_id: pedidoId,
+          modelo,
+          cantidad,
+          variaciones,
+          material,
+          subtotal,
+        },
+      ]);
+
+    if (itemError) throw itemError;
+
+    // Actualizar el total del pedido
+    const { error: totalError } = await supabase.rpc("update_pedido_total", {
+      pedido_id: pedidoId,
+    });
+
+    if (totalError) throw totalError;
+
+    res.status(201).json({
+      message: "Pedido y ítem creados correctamente.",
+      pedidoId,
+      item,
+    });
+  } catch (err) {
+    console.error("Error al crear el pedido y el ítem:", err);
+    res.status(500).json({ error: "Error al crear el pedido y el ítem." });
+  }
+});
+
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
   console.log(`Base de datos funcionando en el puerto: ${PORT}`);

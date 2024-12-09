@@ -90,43 +90,33 @@ const NewOrderForm = () => {
 
     const formattedVariations = formatColors(formData.colors);
 
-    // Procesar pedido
+    // Crear pedido y agregar ítem
     if (formData.nuevoPedido) {
       try {
-        const pedidoResponse = await fetch(`${API_URL}/api/pedidos`, {
+        const response = await fetch(`${API_URL}/api/pedidos-completo`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             total: subtotal,
             estado: "Pendiente",
+            modelo: formData.model,
+            cantidad: formData.quantity,
+            variaciones: formattedVariations,
+            material: materialToSave,
+            subtotal,
           }),
         });
 
-        if (pedidoResponse.ok) {
-          const pedido = await pedidoResponse.json();
-
-          await fetch(`${API_URL}/api/items`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pedidoId: pedido.id,
-              modelo: formData.model,
-              cantidad: formData.quantity,
-              variaciones: formattedVariations,
-              material: materialToSave,
-              subtotal,
-            }),
-          });
-
-          alert("Pedido creado con el ítem agregado.");
+        if (response.ok) {
+          alert("Pedido y ítem creados correctamente.");
           fetchPedidos();
         } else {
-          const errorData = await pedidoResponse.json();
+          const errorData = await response.json();
           alert(`Error: ${errorData.error}`);
         }
       } catch (error) {
-        console.error("Error al crear el nuevo pedido:", error);
-        alert("Error al crear el nuevo pedido.");
+        console.error("Error al crear el pedido y el ítem:", error);
+        alert("Error al crear el pedido y el ítem.");
       }
     } else {
       if (!formData.pedidoId) {
