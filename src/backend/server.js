@@ -165,6 +165,69 @@ app.put("/api/items/:id", async (req, res) => {
   }
 });
 
+// ** Agregar un ítem a un pedido existente **
+app.post("/api/items", async (req, res) => {
+  const { pedidoId, modelo, cantidad, variaciones, material } = req.body;
+
+  // Validación de campos requeridos
+  if (!pedidoId || !modelo || !cantidad || !material) {
+    return res.status(400).json({
+      error: "Todos los campos son obligatorios para crear un ítem.",
+    });
+  }
+
+  try {
+    // Definir precios según el modelo
+    const modelosPrecios = {
+      "Modelo 1 enconchado": 2.0,
+      "Modelo 2 Filo fino": 2.0,
+      "Modelo Ovalado": 2.0,
+      "Modelo Navidad #1 arbol": 2.25,
+      "Modelo Navidad #2 Hojas": 2.5,
+      "Servilletas": 1.0,
+    };
+
+    // Calcular subtotal
+    const subtotal = modelosPrecios[modelo] * cantidad;
+
+    // Insertar el ítem
+    const { data, error } = await supabase
+      .from("items")
+      .insert([
+        {
+          pedido_id: pedidoId,
+          modelo,
+          cantidad,
+          variaciones: variaciones || "",
+          material,
+          subtotal,
+        },
+      ])
+      .select("id");
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(500).json({ error: "Error al insertar el ítem." });
+    }
+
+    // Actualizar el total del pedido
+    const { error: totalError } = await supabase.rpc("update_pedido_total", {
+      pedido_id_param: pedidoId,
+    });
+
+    if (totalError) throw totalError;
+
+    res.status(201).json({
+      message: "Ítem agregado correctamente.",
+      itemId: data[0].id,
+    });
+  } catch (err) {
+    console.error("Error al agregar el ítem:", err.message);
+    res.status(500).json({ error: "Error al agregar el ítem." });
+  }
+});
+
+
 // ** Eliminar un pedido y sus ítems asociados **
 app.delete("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
