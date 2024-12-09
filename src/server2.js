@@ -1,5 +1,4 @@
 
-
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -7,6 +6,9 @@ const { Pool } = require("pg");
 
 const app = express();
 const PORT = 5000;
+
+// URL de Render
+const API_URL = "https://lina-bordados.onrender.com";
 
 // Middleware
 app.use(cors());
@@ -21,7 +23,6 @@ const pool = new Pool({
   port: 6543,                                    // Reemplaza con tu valor real
   ssl: { rejectUnauthorized: false },            // Habilita SSL
 });
-
 // ================== Rutas para manejo de pedidos ==================
 
 // Actualizar estado de un pedido
