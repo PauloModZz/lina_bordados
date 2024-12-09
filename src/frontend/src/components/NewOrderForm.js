@@ -91,7 +91,7 @@ const NewOrderForm = () => {
     const formattedVariations = formatColors(formData.colors);
   
     if (formData.nuevoPedido) {
-      // Usar el nuevo endpoint para crear el pedido y agregar el ítem
+      // Crear nuevo pedido con el ítem
       try {
         const response = await fetch(`${API_URL}/api/pedidos-con-item`, {
           method: "POST",
@@ -108,7 +108,7 @@ const NewOrderForm = () => {
         });
   
         if (response.ok) {
-          alert("Pedido creado con el ítem agregado correctamente.");
+          alert("Pedido y primer ítem creados correctamente.");
           fetchPedidos(); // Actualizar la lista de pedidos
         } else {
           const errorData = await response.json();
@@ -126,7 +126,7 @@ const NewOrderForm = () => {
       }
   
       try {
-        const itemResponse = await fetch(`${API_URL}/api/items`, {
+        const response = await fetch(`${API_URL}/api/items`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -139,12 +139,12 @@ const NewOrderForm = () => {
           }),
         });
   
-        if (itemResponse.ok) {
+        if (response.ok) {
           alert("Ítem agregado al pedido existente.");
           fetchPedidos(); // Actualizar la lista de pedidos
         } else {
-          const errorData = await itemResponse.json();
-          alert(`Error al agregar el ítem: ${errorData.error}`);
+          const errorData = await response.json();
+          alert(`Error: ${errorData.error}`);
         }
       } catch (error) {
         console.error("Error al agregar el ítem:", error);
@@ -163,6 +163,7 @@ const NewOrderForm = () => {
       nuevoPedido: false,
     });
   };
+  
   
   
   

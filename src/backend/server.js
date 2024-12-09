@@ -305,11 +305,10 @@ app.post("/api/pedidos-con-item", async (req, res) => {
     const { data: pedido, error: pedidoError } = await supabase
       .from("pedidos")
       .insert([{ total, estado }])
-      .select("id");
+      .select("id"); // Seleccionar el ID del nuevo pedido
 
     if (pedidoError) throw pedidoError;
-
-    const pedidoId = pedido[0].id; // Obtener el ID del nuevo pedido
+    const pedidoId = pedido[0].id;
 
     // Crear el ítem asociado al pedido
     const { data: item, error: itemError } = await supabase
@@ -327,14 +326,6 @@ app.post("/api/pedidos-con-item", async (req, res) => {
 
     if (itemError) throw itemError;
 
-    // Actualizar el total del pedido (si es necesario)
-    const { error: totalError } = await supabase.rpc("update_pedido_total", {
-      pedido_id: pedidoId,
-    });
-
-    if (totalError) throw totalError;
-
-    // Respuesta final con éxito
     res.status(201).json({
       message: "Pedido y primer ítem creados correctamente.",
       pedidoId,
@@ -345,6 +336,7 @@ app.post("/api/pedidos-con-item", async (req, res) => {
     res.status(500).json({ error: "Error al crear el pedido y el ítem." });
   }
 });
+
 
 
 // ================== Iniciar el servidor ==================
