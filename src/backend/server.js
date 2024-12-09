@@ -191,6 +191,15 @@ app.post("/api/items", async (req, res) => {
     res.status(500).json({ error: "Error al agregar el ítem." });
   }
 });
+app.get("/test-db", async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT NOW() AS current_time");
+    res.json({ message: "Conexión exitosa", currentTime: rows[0].current_time });
+  } catch (err) {
+    console.error("Error al conectar a la base de datos:", err.message, err.stack);
+    res.status(500).json({ error: "No se pudo conectar a la base de datos." });
+  }
+});
 
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
