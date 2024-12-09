@@ -5,15 +5,14 @@ import "./Dashboard.css";
 const API_URL = "https://lina-xc64.onrender.com";
 
 const Dashboard = () => {
-  const [orders, setOrders] = useState([]); // Lista de pedidos
+  const [orders, setOrders] = useState([]); 
 
-  // Función para cargar pedidos desde la API
+  // Cargar pedidos desde la API
   const fetchOrders = async () => {
     try {
       const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
 
-      // Formatear la fecha y mantener el orden
       const formattedOrders = data
         .map((order) => {
           const dateObj = new Date(order.fecha);
@@ -27,29 +26,25 @@ const Dashboard = () => {
             totalCalculated,
           };
         })
-        .sort((a, b) => a.id - b.id); // Ordenar por ID ascendente
+        .sort((a, b) => a.id - b.id);
 
-      setOrders((prevOrders) => {
-        return formattedOrders.map((order) => {
+      setOrders((prevOrders) =>
+        formattedOrders.map((order) => {
           const prevOrder = prevOrders.find((o) => o.id === order.id);
           return { ...order, expanded: prevOrder ? prevOrder.expanded : false };
-        });
-      });
+        })
+      );
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
 
-  // Cargar pedidos al montar el componente y establecer intervalo
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(() => {
-      fetchOrders();
-    }, 5000);
+    const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Alternar expansión de un pedido
   const toggleExpand = (id) => {
     setOrders((prevOrders) =>
       prevOrders.map((order) =>
@@ -58,8 +53,17 @@ const Dashboard = () => {
     );
   };
 
-  // Función para actualizar la cantidad de un ítem
-  const handleEditQuantity = async (itemId, newQuantity) => {
+  const handleEditQuantity = async (itemId, currentQuantity) => {
+    const newQuantity = parseInt(
+      prompt("Introduce la nueva cantidad:", currentQuantity),
+      10
+    );
+
+    if (isNaN(newQuantity) || newQuantity <= 0) {
+      alert("La cantidad debe ser un número válido mayor a 0.");
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/api/items/${itemId}`, {
         method: "PUT",
@@ -69,10 +73,10 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Cantidad actualizada correctamente.");
-        fetchOrders(); // Actualizar lista de pedidos
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        alert(`Error al actualizar: ${errorData.error}`);
       }
     } catch (error) {
       console.error("Error al actualizar la cantidad:", error);
@@ -80,24 +84,27 @@ const Dashboard = () => {
     }
   };
 
-  // Función para actualizar el material de un ítem
   const handleEditMaterial = async (itemId, currentMaterial) => {
     const newMaterial = prompt("Introduce el nuevo material:", currentMaterial);
-    if (!newMaterial) return;
+
+    if (!newMaterial || newMaterial.trim() === "") {
+      alert("El material no puede estar vacío.");
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ material: newMaterial }),
+        body: JSON.stringify({ material: newMaterial.trim() }),
       });
 
       if (response.ok) {
         alert("Material actualizado correctamente.");
-        fetchOrders(); // Actualizar lista de pedidos
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        alert(`Error al actualizar: ${errorData.error}`);
       }
     } catch (error) {
       console.error("Error al actualizar el material:", error);
@@ -105,7 +112,6 @@ const Dashboard = () => {
     }
   };
 
-  // Función para actualizar las variaciones de un ítem
   const handleEditVariations = async (itemId, currentVariations) => {
     const variationsArray = currentVariations.split(", ").map((variation) => {
       const [label, color] = variation.split(": ");
@@ -128,10 +134,10 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Variaciones actualizadas correctamente.");
-        fetchOrders(); // Actualizar lista de pedidos
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        alert(`Error al actualizar: ${errorData.error}`);
       }
     } catch (error) {
       console.error("Error al actualizar las variaciones:", error);
@@ -139,7 +145,6 @@ const Dashboard = () => {
     }
   };
 
-  // Función para descargar la tabla de un pedido como PNG
   const handleDownloadTable = (orderId) => {
     const tableElement = document.getElementById(`table-${orderId}`);
     if (tableElement) {
@@ -178,10 +183,16 @@ const Dashboard = () => {
         <div key={order.id} className="order-container">
           <div className="order-header">
             <h3>
-              Pedido #{order.id} <span className="order-status">{getEmojiForStatus(order.estado)}</span>
+              Pedido #{order.id}{" "}
+              <span className="order-status">
+                {getEmojiForStatus(order.estado)}
+              </span>
             </h3>
             <div className="actions">
-              <button onClick={() => handleDownloadTable(order.id)} style={{ marginRight: "10px" }}>
+              <button
+                onClick={() => handleDownloadTable(order.id)}
+                style={{ marginRight: "10px" }}
+              >
                 Descargar
               </button>
               <button onClick={() => toggleExpand(order.id)}>
@@ -191,9 +202,15 @@ const Dashboard = () => {
           </div>
           {order.expanded && (
             <div className="order-details scrollable-table">
-              <p><strong>Fecha:</strong> {order.formattedDate}</p>
-              <p><strong>Total:</strong> ${order.totalCalculated.toFixed(2)}</p>
-              <p><strong>Estado:</strong> {order.estado}</p>
+              <p>
+                <strong>Fecha:</strong> {order.formattedDate}
+              </p>
+              <p>
+                <strong>Total:</strong> ${order.totalCalculated.toFixed(2)}
+              </p>
+              <p>
+                <strong>Estado:</strong> {order.estado}
+              </p>
               <table id={`table-${order.id}`}>
                 <thead>
                   <tr>
@@ -208,9 +225,15 @@ const Dashboard = () => {
                   {order.items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.modelo}</td>
-                      <td onDoubleClick={() => handleEditMaterial(item.id, item.material)}>{item.material || "Sin material"}</td>
-                      <td onDoubleClick={() => handleEditQuantity(item.id, parseInt(prompt("Nueva cantidad:", item.cantidad), 10))}>{item.cantidad}</td>
-                      <td onDoubleClick={() => handleEditVariations(item.id, item.variaciones)}>{item.variaciones}</td>
+                      <td onDoubleClick={() => handleEditMaterial(item.id, item.material)}>
+                        {item.material || "Sin material"}
+                      </td>
+                      <td onDoubleClick={() => handleEditQuantity(item.id, item.cantidad)}>
+                        {item.cantidad}
+                      </td>
+                      <td onDoubleClick={() => handleEditVariations(item.id, item.variaciones)}>
+                        {item.variaciones}
+                      </td>
                       <td>${item.subtotal.toFixed(2)}</td>
                     </tr>
                   ))}
