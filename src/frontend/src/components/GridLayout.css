@@ -1,4 +1,4 @@
-/* Grid Layout principal */
+/* Grid Layout principal para pantallas grandes */
 .parent {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -48,11 +48,12 @@
     flex-direction: column;
     width: 100%;
     height: auto; /* Permite crecimiento dinámico */
+    gap: 10px; /* Espacio entre contenedores */
   }
 
   .div1, .div2, .div3, .div4, .div5 {
     width: 100%;
     height: auto; /* Ajuste automático */
-    margin-bottom: 10px;
+    margin: 0 auto; /* Centrado */
   }
 }
