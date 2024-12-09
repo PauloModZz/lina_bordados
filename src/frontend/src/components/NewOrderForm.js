@@ -103,36 +103,37 @@ const NewOrderForm = () => {
           }),
         });
   
-        if (pedidoResponse.ok) {
-          const pedido = await pedidoResponse.json();
-  
-          // Esperar 2 segundos para asegurarse de que el pedido esté completamente creado
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-  
-          // Agregar el ítem al nuevo pedido
-          const itemResponse = await fetch(`${API_URL}/api/items`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pedidoId: pedido.data[0].id, // Usar el ID del pedido recién creado
-              modelo: formData.model,
-              cantidad: formData.quantity,
-              variaciones: formattedVariations,
-              material: materialToSave,
-              subtotal,
-            }),
-          });
-  
-          if (itemResponse.ok) {
-            alert("Pedido creado y ítem agregado correctamente.");
-            fetchPedidos(); // Actualizar la lista de pedidos
-          } else {
-            const errorData = await itemResponse.json();
-            alert(`Error al agregar el ítem: ${errorData.error}`);
-          }
-        } else {
+        if (!pedidoResponse.ok) {
           const errorData = await pedidoResponse.json();
           alert(`Error al crear el pedido: ${errorData.error}`);
+          return;
+        }
+  
+        const pedido = await pedidoResponse.json();
+  
+        // Esperar 10 segundos para asegurarse de que el pedido esté completamente creado
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+  
+        // Agregar el ítem al nuevo pedido
+        const itemResponse = await fetch(`${API_URL}/api/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pedidoId: pedido.data[0].id, // Usar el ID del pedido recién creado
+            modelo: formData.model,
+            cantidad: formData.quantity,
+            variaciones: formattedVariations,
+            material: materialToSave,
+            subtotal,
+          }),
+        });
+  
+        if (itemResponse.ok) {
+          alert("Pedido creado y ítem agregado correctamente.");
+          fetchPedidos(); // Actualizar la lista de pedidos
+        } else {
+          const errorData = await itemResponse.json();
+          alert(`Error al agregar el ítem: ${errorData.error}`);
         }
       } catch (error) {
         console.error("Error al crear el pedido y el ítem:", error);
@@ -183,6 +184,7 @@ const NewOrderForm = () => {
       nuevoPedido: false,
     });
   };
+  
   
 
   return (
