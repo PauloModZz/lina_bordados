@@ -336,6 +336,49 @@ app.post("/api/pedidos-con-item", async (req, res) => {
     res.status(500).json({ error: "Error al crear el pedido y el ítem." });
   }
 });
+// Actualizar ítem por ID
+app.put("/api/items/:id", async (req, res) => {
+  const { id } = req.params;  // ID del ítem a actualizar
+  const { cantidad, material, variaciones } = req.body;
+
+  // Verifica que al menos uno de los campos esté presente
+  if (!cantidad && !material && !variaciones) {
+    return res.status(400).json({
+      error: "Debe proporcionar cantidad, material o variaciones para actualizar.",
+    });
+  }
+
+  try {
+    // Actualiza el ítem según los campos proporcionados
+    const { data, error } = await supabase
+      .from("items")
+      .update({
+        ...(cantidad && { cantidad }),
+        ...(material && { material }),
+        ...(variaciones && { variaciones }),
+      })
+      .eq("id", id)
+      .select();
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Ítem no encontrado." });
+    }
+
+    // Actualiza el total del pedido después de modificar el ítem
+    const { error: totalError } = await supabase.rpc("update_pedido_total", {
+      pedido_id: data[0].pedido_id,
+    });
+
+    if (totalError) throw totalError;
+
+    res.json({ message: "Ítem actualizado correctamente.", data });
+  } catch (err) {
+    console.error("Error al actualizar el ítem:", err.message);
+    res.status(500).json({ error: "Error al actualizar el ítem." });
+  }
+});
 
 
 
