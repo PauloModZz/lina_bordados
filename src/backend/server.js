@@ -178,75 +178,37 @@ app.put("/api/pedidos/:id", async (req, res) => {
 
 
 // Actualizar el ítem
-app.put("/api/items/:id", async (req, res) => {
+app.put("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
-  const { cantidad, variaciones, material } = req.body;
+  const { estado } = req.body;
 
-  if (!cantidad && !variaciones && !material) {
-    return res.status(400).json({
-      error: "Debe proporcionar cantidad, variaciones o material para actualizar.",
-    });
+  if (!estado) {
+    return res.status(400).json({ error: "El estado es obligatorio." });
   }
 
   try {
-    // Actualizar el ítem
-    const { data: updatedItem, error: updateError } = await supabase
-      .from("items")
-      .update({
-        cantidad,
-        variaciones,
-        material,
-      })
-      .eq("id", id)
-      .select("pedido_id, modelo");
+    const { data, error } = await supabase
+      .from("pedidos")
+      .update({ estado })
+      .eq("id", id);
 
-    if (updateError) throw updateError;
-    if (updatedItem.length === 0) {
-      return res.status(404).json({ error: "Ítem no encontrado." });
+    if (error) throw error;
+
+    // En lugar de verificar length, verificamos si `data` tiene al menos un elemento o es nulo
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return res.status(200).json({
+        message: `Pedido #${id} actualizado a estado ${estado}, pero no se devolvieron datos.`,
+      });
     }
 
-    const { pedido_id, modelo } = updatedItem[0];
-
-    if (cantidad) {
-      // Define los precios por modelo
-      const modelPrices = {
-        "Modelo 1 enconchado": 2,
-        "Modelo 2 Filo fino": 2,
-        "Modelo Ovalado": 2,
-        "Modelo Navidad #1 arbol": 2.25,
-        "Modelo Navidad #2 Hojas": 2.5,
-        "Servilletas": 1,
-      };
-
-      const precio = modelPrices[modelo] || 0;
-      const nuevoSubtotal = cantidad * precio;
-
-      // Actualizar subtotal
-      const { error: subtotalError } = await supabase
-        .from("items")
-        .update({ subtotal: nuevoSubtotal })
-        .eq("id", id);
-
-      if (subtotalError) throw subtotalError;
-
-      // Recalcular el total del pedido
-      const { error: totalError } = await supabase.rpc("update_pedido_total", {
-        pedido_id,
-      });
-
-      if (totalError) throw totalError;
-
-      res.json({
-        message: "Ítem y total del pedido actualizados correctamente.",
-      });
-    } else {
-      res.json({ message: "Ítem actualizado correctamente." });
-    }
+    // Si todo fue bien y `data` contiene información
+    res.status(200).json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
-    console.error("Error al actualizar el ítem:", err);
-    res.status(500).json({ error: "Error al actualizar el ítem." });
+    console.error("Error al actualizar el pedido:", err.message);
+    res.status(500).json({ error: "Error al actualizar el pedido." });
   }
 });
+
 
 // Eliminar un pedido por ID
 app.delete("/api/pedidos/:id", async (req, res) => {
