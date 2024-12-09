@@ -161,20 +161,18 @@ app.put("/api/pedidos/:id", async (req, res) => {
     const { data, error } = await supabase
       .from("pedidos")
       .update({ estado })
-      .eq("id", id);
+      .eq("id", id)
+      .select(); // Esto asegura que data contenga las filas actualizadas.
 
     if (error) throw error;
 
-    if (!data || data.length === 0) { // Valida si data es null o vacío
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
     res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
-    console.error("Error al actualizar el pedido:", err.message);
+    console.error("Error al actualizar el pedido:", err);
     res.status(500).json({ error: "Error al actualizar el pedido." });
   }
 });
+
 
 
 // Actualizar el ítem
