@@ -1,7 +1,10 @@
+
+
 const express = require("express");
-const mysql = require("mysql");
+const { Pool } = require("pg");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+
 
 const app = express();
 const PORT = 5000;
@@ -10,80 +13,16 @@ const PORT = 5000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Conexión inicial para verificar o crear la base de datos
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "q9Pqk989wxLtInx1", // Cambiar según tu configuración
+// Conexión inicial para PostgreSQL usando Pool
+const pool = new Pool({
+  host: "aws-0-us-west-1.pooler.supabase.com",   // Reemplaza con tu valor real
+  user: "postgres.zbvnhrrrrdfrwjnxyuz",          // Reemplaza con tu valor real
+  password: "AkSkqm30JncAT2Ze",                  // Reemplaza con tu valor real
+  database: "postgres",                          // Reemplaza con tu valor real
+  port: 6543,                                    // Reemplaza con tu valor real
+  ssl: { rejectUnauthorized: false },            // Habilita SSL
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Error conectando al servidor MySQL:", err);
-    return;
-  }
-  console.log("Conectado al servidor MySQL.");
-
-  // Crear la base de datos si no existe
-  db.query("CREATE DATABASE IF NOT EXISTS bordados", (err) => {
-    if (err) {
-      console.error("Error al crear la base de datos bordados:", err);
-      return;
-    }
-    console.log("Base de datos 'bordados' verificada o creada exitosamente.");
-
-    // Cambiar al uso de la base de datos bordados
-    db.changeUser({ database: "bordados" }, (err) => {
-      if (err) {
-        console.error("Error al cambiar a la base de datos 'bordados':", err);
-        return;
-      }
-
-      console.log("Conectado a la base de datos 'bordados'.");
-
-      // Crear la tabla pedidos
-      const createPedidosTable = `
-        CREATE TABLE IF NOT EXISTS pedidos (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          fecha DATE DEFAULT (CURDATE()),
-          total DECIMAL(10, 2) NOT NULL,
-          estado ENUM('Pendiente', 'Hecho', 'Entregado', 'Pagado') DEFAULT 'Pendiente'
-        );
-      `;
-      db.query(createPedidosTable, (err) => {
-        if (err) {
-          console.error("Error al crear la tabla pedidos:", err);
-          return;
-        }
-        console.log("Tabla 'pedidos' verificada o creada exitosamente.");
-
-        // Crear la tabla items
-        const createItemsTable = `
-          CREATE TABLE IF NOT EXISTS items (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            pedido_id INT NOT NULL,
-            modelo VARCHAR(255) NOT NULL,
-            cantidad INT NOT NULL,
-            variaciones TEXT,
-            subtotal DECIMAL(10, 2) NOT NULL,
-            FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
-          );
-        `;
-        db.query(createItemsTable, (err) => {
-          if (err) {
-            console.error("Error al crear la tabla items:", err);
-            return;
-          }
-          console.log("Tabla 'items' verificada o creada exitosamente.");
-        });
-      });
-    });
-  });
-});
-
-// ================== Rutas para manejo de pedidos ==================
-
-// Obtener todos los pedidos
 // Obtener todos los pedidos
 app.get("/api/pedidos", async (req, res) => {
   const query = `
@@ -125,7 +64,7 @@ app.get("/api/pedidos", async (req, res) => {
           modelo: row.modelo,
           cantidad: row.cantidad,
           variaciones: row.variaciones,
-          material: row.material, // Incluir el campo material
+          material: row.material,
           subtotal: row.subtotal,
         });
       }
@@ -248,6 +187,7 @@ app.post("/api/items", async (req, res) => {
     res.status(500).json({ error: "Error al agregar el ítem." });
   }
 });
+
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
