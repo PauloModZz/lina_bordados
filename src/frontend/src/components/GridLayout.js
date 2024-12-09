@@ -6,13 +6,16 @@ import Contabilidad from "./Contabilidad";
 import "./GridLayout.css";
 import DetallesAdicionales from "./DetallesAdicionales";
 
+// URL base de la API
+const API_URL = "https://lina-xc64.onrender.com";
+
 const GridLayout = () => {
   const [orders, setOrders] = useState([]);
 
   // Función para cargar pedidos desde la API
   const fetchOrders = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/pedidos");
+      const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
       setOrders(data);
     } catch (error) {
@@ -28,7 +31,7 @@ const GridLayout = () => {
   // Función para manejar acciones desde el componente Acciones
   const handleActionApply = async (pedidoId, action) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/pedidos/${pedidoId}`, {
+      const response = await fetch(`${API_URL}/api/pedidos/${pedidoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado: action }),

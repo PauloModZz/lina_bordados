@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./DetallesAdicionales.css";
 
+// URL base de la API
+const API_URL = "https://lina-xc64.onrender.com";
+
 const DetallesAdicionales = () => {
   const [summary, setSummary] = useState({
     totalPendientes: 0,
@@ -14,7 +17,7 @@ const DetallesAdicionales = () => {
   useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/pedidos");
+        const response = await fetch(`${API_URL}/api/pedidos`);
         const pedidos = await response.json();
 
         const totalPendientes = pedidos.filter((p) => p.estado === "Pendiente").length;

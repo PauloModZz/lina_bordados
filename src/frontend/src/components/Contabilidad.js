@@ -3,6 +3,9 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import "./Contabilidad.css";
 
+// URL base de la API
+const API_URL = "https://lina-xc64.onrender.com";
+
 const Contabilidad = () => {
   const [orders, setOrders] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -10,7 +13,7 @@ const Contabilidad = () => {
   // Cargar todos los pedidos desde la API
   const fetchOrders = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/pedidos");
+      const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
       setOrders(data);
 

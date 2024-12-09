@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./Acciones.css";
 
+// URL base de la API
+const API_URL = "https://lina-xc64.onrender.com";
+
 const Acciones = ({ onActionApply }) => {
   const [pedidos, setPedidos] = useState([]); // Lista de pedidos disponibles
   const [selectedPedido, setSelectedPedido] = useState(""); // Pedido seleccionado
@@ -8,7 +11,7 @@ const Acciones = ({ onActionApply }) => {
   // Obtener los pedidos desde la API
   const fetchPedidos = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/pedidos");
+      const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
       setPedidos(data);
     } catch (error) {
@@ -38,7 +41,7 @@ const Acciones = ({ onActionApply }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/pedidos/${selectedPedido}`,
+        `${API_URL}/api/pedidos/${selectedPedido}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -72,7 +75,7 @@ const Acciones = ({ onActionApply }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/pedidos/${selectedPedido}`,
+        `${API_URL}/api/pedidos/${selectedPedido}`,
         {
           method: "DELETE",
         }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./NewOrderForm.css";
 
+// URL base de la API
+const API_URL = "https://lina-xc64.onrender.com";
+
 const NewOrderForm = () => {
   const [formData, setFormData] = useState({
     model: "",
@@ -27,7 +30,7 @@ const NewOrderForm = () => {
 
   const fetchPedidos = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/pedidos");
+      const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
       setPedidos(data);
     } catch (error) {
@@ -90,7 +93,7 @@ const NewOrderForm = () => {
     // Procesar pedido
     if (formData.nuevoPedido) {
       try {
-        const pedidoResponse = await fetch("http://localhost:5000/api/pedidos", {
+        const pedidoResponse = await fetch(`${API_URL}/api/pedidos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -102,7 +105,7 @@ const NewOrderForm = () => {
         if (pedidoResponse.ok) {
           const pedido = await pedidoResponse.json();
 
-          await fetch("http://localhost:5000/api/items", {
+          await fetch(`${API_URL}/api/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -132,7 +135,7 @@ const NewOrderForm = () => {
       }
 
       try {
-        await fetch("http://localhost:5000/api/items", {
+        await fetch(`${API_URL}/api/items`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
