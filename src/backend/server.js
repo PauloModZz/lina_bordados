@@ -290,56 +290,55 @@ app.post("/api/pedidos-completo", async (req, res) => {
 });
 
 // Crear un nuevo pedido con el primer ítem
-app.post("/api/pedidos-con-item", async (req, res) => {
-  const { total, estado, modelo, cantidad, variaciones, material, subtotal } = req.body;
+app.put("/api/items/:id", async (req, res) => {
+  const { id } = req.params;
+  const { cantidad, material, variaciones } = req.body;
 
-  if (!total || !estado || !modelo || !cantidad || !subtotal || !material) {
+  // Validación de entradas
+  if (cantidad === undefined && !material && !variaciones) {
     return res.status(400).json({
-      error: "Todos los campos son obligatorios, incluido el modelo, cantidad, y material.",
+      error: "Debe proporcionar al menos uno de los campos: cantidad, material o variaciones.",
     });
   }
 
   try {
-    const { data: pedido, error: pedidoError } = await supabase
-      .from("pedidos")
-      .insert([{ total, estado }])
-      .select("id");
-
-    if (pedidoError) throw pedidoError;
-
-    const pedidoId = pedido[0].id;
-
-    // Crear el ítem asociado al pedido
-    const { data: item, error: itemError } = await supabase
+    // Actualizar el ítem
+    const { data: updatedItem, error } = await supabase
       .from("items")
-      .insert([
-        {
-          pedido_id: pedidoId,
-          modelo,
-          cantidad,
-          variaciones,
-          material,
-          subtotal,
-        },
-      ]);
+      .update({
+        ...(cantidad !== undefined && { cantidad }),
+        ...(material && { material }),
+        ...(variaciones && { variaciones }),
+        subtotal: supabase.raw("cantidad * precio_unitario"),  // Recalcular subtotal
+      })
+      .eq("id", id)
+      .select("pedido_id");
 
-    if (itemError) throw itemError;
+    if (error) {
+      console.error("Error al actualizar ítem:", error);
+      throw error;
+    }
 
-    // Actualizar el total después de crear el ítem
+    if (!updatedItem || updatedItem.length === 0) {
+      return res.status(404).json({ error: "Ítem no encontrado." });
+    }
+
+    const pedidoId = updatedItem[0].pedido_id;
+
+    // Actualizar el total del pedido
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
       pedido_id_param: pedidoId,
     });
 
-    if (totalError) throw totalError;
+    if (totalError) {
+      console.error("Error al actualizar el total del pedido:", totalError);
+      throw totalError;
+    }
 
-    res.status(201).json({
-      message: "Pedido y primer ítem creados correctamente.",
-      pedidoId,
-      item,
-    });
+    res.json({ message: "Ítem actualizado correctamente.", updatedItem });
   } catch (err) {
-    console.error("Error al crear el pedido y el ítem:", err);
-    res.status(500).json({ error: "Error al crear el pedido y el ítem." });
+    console.error("Error general al actualizar el ítem:", err.message);
+    res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
 
