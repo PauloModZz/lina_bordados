@@ -5,7 +5,7 @@ import "./Dashboard.css";
 const API_URL = "https://lina-xc64.onrender.com";
 
 const Dashboard = () => {
-  const [orders, setOrders] = useState([]); 
+  const [orders, setOrders] = useState([]);
 
   // Cargar pedidos desde la API
   const fetchOrders = async () => {
@@ -28,7 +28,7 @@ const Dashboard = () => {
           return {
             ...order,
             formattedDate,
-            totalCalculated: totalCalculated || 0, 
+            totalCalculated: totalCalculated || 0,
           };
         })
         .sort((a, b) => a.id - b.id);
@@ -75,7 +75,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert(`${label} actualizado correctamente.`);
-        fetchOrders(); 
+        await fetchOrders(); // Asegurar la actualización después del cambio
       } else {
         const errorData = await response.json();
         alert(`Error al actualizar: ${errorData.error}`);
@@ -166,16 +166,45 @@ const Dashboard = () => {
                   {order.items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.modelo}</td>
-                      <td onDoubleClick={() => handleEditField(item.id, "material", item.material, "material")}>
+                      <td
+                        onDoubleClick={() =>
+                          handleEditField(
+                            item.id,
+                            "material",
+                            item.material,
+                            "material"
+                          )
+                        }
+                      >
                         {item.material || "Sin material"}
                       </td>
-                      <td onDoubleClick={() => handleEditField(item.id, "cantidad", item.cantidad, "cantidad")}>
+                      <td
+                        onDoubleClick={() =>
+                          handleEditField(
+                            item.id,
+                            "cantidad",
+                            item.cantidad,
+                            "cantidad"
+                          )
+                        }
+                      >
                         {item.cantidad}
                       </td>
-                      <td onDoubleClick={() => handleEditField(item.id, "variaciones", item.variaciones, "variaciones")}>
+                      <td
+                        onDoubleClick={() =>
+                          handleEditField(
+                            item.id,
+                            "variaciones",
+                            item.variaciones,
+                            "variaciones"
+                          )
+                        }
+                      >
                         {item.variaciones || "Sin variaciones"}
                       </td>
-                      <td>${item.subtotal?.toFixed(2) || "0.00"}</td>
+                      <td>
+                        ${item.subtotal?.toFixed(2) || "0.00"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
