@@ -289,82 +289,69 @@ app.post("/api/pedidos-completo", async (req, res) => {
   }
 });
 
-// Crear un nuevo pedido con el primer ítem
+// Actualizar un ítem y recalcular el total
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
-  const { cantidad, material, variaciones, modelo } = req.body;
+  const { cantidad, material, variaciones } = req.body;
 
-  const modelosPrecios = {
-    "Modelo 1 enconchado": 2.0,
-    "Modelo 2 Filo fino": 2.0,
-    "Modelo Ovalado": 2.0,
-    "Modelo Navidad #1 arbol": 2.25,
-    "Modelo Navidad #2 Hojas": 2.5,
-    "Servilletas": 1.0,
-  };
-
-  // Validar campos obligatorios
-  if (!cantidad && !material && !variaciones && !modelo) {
+  // Validar campos requeridos
+  if (!cantidad && !material && !variaciones) {
     return res.status(400).json({
-      error: "Debe proporcionar al menos uno de los campos: cantidad, material, variaciones o modelo.",
+      error: "Debe proporcionar cantidad, material o variaciones para actualizar.",
     });
   }
 
   try {
-    // Actualizar el ítem
-    const { data: updatedItem, error: itemError } = await supabase
+    // Actualizar el ítem sin precio_unitario
+    const { data, error } = await supabase
       .from("items")
       .update({
-        ...(cantidad !== undefined && { cantidad }),
+        ...(cantidad && { cantidad }),
         ...(material && { material }),
         ...(variaciones && { variaciones }),
       })
       .eq("id", id)
       .select("pedido_id, cantidad, modelo");
 
-    if (itemError) {
-      console.error("Error al actualizar ítem:", itemError);
-      return res.status(500).json({ error: "Error al actualizar el ítem." });
-    }
-
-    if (!updatedItem || updatedItem.length === 0) {
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return res.status(404).json({ error: "Ítem no encontrado." });
     }
 
-    const pedidoId = updatedItem[0].pedido_id;
-    const modeloActual = updatedItem[0].modelo || modelo;
-    const precioUnitario = modelosPrecios[modeloActual] || 0;
-    const nuevoSubtotal = updatedItem[0].cantidad * precioUnitario;
+    // Obtener el pedido_id y modelo
+    const pedidoId = data[0].pedido_id;
+    const modelo = data[0].modelo;
 
-    // Recalcular el subtotal
+    // Calcular subtotal basado en el modelo
+    const modelosPrecios = {
+      "Modelo 1 enconchado": 2.0,
+      "Modelo 2 Filo fino": 2.0,
+      "Modelo Ovalado": 2.0,
+      "Modelo Navidad #1 arbol": 2.25,
+      "Modelo Navidad #2 Hojas": 2.5,
+      "Servilletas": 1.0,
+    };
+
+    const nuevoSubtotal = modelosPrecios[modelo] * cantidad;
+
+    // Actualizar subtotal del ítem
     const { error: subtotalError } = await supabase
       .from("items")
-      .update({
-        subtotal: nuevoSubtotal,
-      })
+      .update({ subtotal: nuevoSubtotal })
       .eq("id", id);
 
-    if (subtotalError) {
-      console.error("Error al actualizar el subtotal:", subtotalError);
-      return res.status(500).json({ error: "Error al actualizar el subtotal." });
-    }
+    if (subtotalError) throw subtotalError;
 
     // Actualizar el total del pedido
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
       pedido_id_param: pedidoId,
     });
 
-    if (totalError) {
-      console.error("Error al actualizar el total del pedido:", totalError);
-      return res.status(500).json({ error: "Error al actualizar el total del pedido." });
-    }
+    if (totalError) throw totalError;
 
-    res.json({
-      message: "Ítem y total actualizados correctamente.",
-      updatedItem,
-    });
+    res.json({ message: "Ítem actualizado correctamente." });
   } catch (err) {
-    console.error("Error general al actualizar el ítem:", err.message);
+    console.error("Error al actualizar el ítem:", err.message);
     res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
