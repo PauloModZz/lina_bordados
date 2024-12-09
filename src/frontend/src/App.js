@@ -1,5 +1,6 @@
 import React from "react";
-import GridLayout from "./GridLayout";
+import GridLayout from './components/GridLayout';
+
 
 function App() {
   return (
