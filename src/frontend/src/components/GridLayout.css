@@ -13,6 +13,7 @@
 .div1, .div2, .div3, .div4, .div5 {
   border: 1px solid #333;
   padding: 10px;
+  box-sizing: border-box;
 }
 
 .div1 {
@@ -40,7 +41,7 @@
   background-color: #5a5a5a;
 }
 
-/* Media Query para móviles */
+/* Media Query para pantallas móviles */
 @media screen and (max-width: 768px) {
   .parent {
     display: flex;
