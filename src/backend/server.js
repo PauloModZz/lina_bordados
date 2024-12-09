@@ -15,22 +15,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 app.use(cors());
 app.use(bodyParser.json());
 
-// Prueba de conexión
-app.get("/test-db", async (req, res) => {
-  try {
-    const { data, error } = await supabase.from("pedidos").select("*");
-    if (error) throw error;
-
-    res.json({
-      message: "Conexión exitosa",
-      pedidos: data,
-    });
-  } catch (err) {
-    console.error("Error al conectar a la base de datos:", err.message);
-    res.status(500).json({ error: "No se pudo conectar a la base de datos." });
-  }
-});
-
 // Obtener todos los pedidos
 
 app.get("/", (req, res) => {
@@ -402,15 +386,6 @@ app.delete("/api/pedidos/:id", async (req, res) => {
   }
 });
 
-app.get("/test-db", async (req, res) => {
-  try {
-    const { rows } = await pool.query("SELECT NOW() AS current_time");
-    res.json({ message: "Conexión exitosa", currentTime: rows[0].current_time });
-  } catch (err) {
-    console.error("Error al conectar a la base de datos:", err.message, err.stack);
-    res.status(500).json({ error: "No se pudo conectar a la base de datos." });
-  }
-});
 
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
