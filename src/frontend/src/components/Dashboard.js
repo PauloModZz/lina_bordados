@@ -27,19 +27,11 @@ const Dashboard = () => {
           ...order,
           formattedDate,
           totalCalculated: totalCalculated || 0,
+          expanded: order.expanded || false,
         };
       });
 
-      setOrders((prevOrders) =>
-        prevOrders.map((prevOrder) => {
-          const updatedOrder = formattedOrders.find(
-            (order) => order.id === prevOrder.id
-          );
-          return updatedOrder
-            ? { ...updatedOrder, expanded: prevOrder.expanded }
-            : prevOrder;
-        })
-      );
+      setOrders(formattedOrders);
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
@@ -76,19 +68,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert(`${label} actualizado correctamente.`);
-        const updatedResponse = await fetch(`${API_URL}/api/pedidos`);
-        const updatedData = await updatedResponse.json();
-
-        setOrders((prevOrders) =>
-          prevOrders.map((prevOrder) => {
-            const updatedOrder = updatedData.find(
-              (order) => order.id === prevOrder.id
-            );
-            return updatedOrder
-              ? { ...updatedOrder, expanded: prevOrder.expanded }
-              : prevOrder;
-          })
-        );
+        fetchOrders(); 
       } else {
         const errorData = await response.json();
         alert(`Error al actualizar: ${errorData.error}`);
@@ -133,97 +113,101 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <h2>Pedidos</h2>
-      {orders.map((order) => (
-        <div key={order.id} className="order-container">
-          <div className="order-header">
-            <h3>
-              Pedido #{order.id}{" "}
-              <span className="order-status">
-                {getEmojiForStatus(order.estado)}
-              </span>
-            </h3>
-            <div className="actions">
-              <button
-                onClick={() => handleDownloadTable(order.id)}
-                style={{ marginRight: "10px" }}
-              >
-                Descargar
-              </button>
-              <button onClick={() => toggleExpand(order.id)}>
-                {order.expanded ? "Minimizar" : "Maximizar"}
-              </button>
+      {orders.length === 0 ? (
+        <p>No hay pedidos disponibles.</p>
+      ) : (
+        orders.map((order) => (
+          <div key={order.id} className="order-container">
+            <div className="order-header">
+              <h3>
+                Pedido #{order.id}{" "}
+                <span className="order-status">
+                  {getEmojiForStatus(order.estado)}
+                </span>
+              </h3>
+              <div className="actions">
+                <button
+                  onClick={() => handleDownloadTable(order.id)}
+                  style={{ marginRight: "10px" }}
+                >
+                  Descargar
+                </button>
+                <button onClick={() => toggleExpand(order.id)}>
+                  {order.expanded ? "Minimizar" : "Maximizar"}
+                </button>
+              </div>
             </div>
-          </div>
-          {order.expanded && (
-            <div className="order-details scrollable-table">
-              <p>
-                <strong>Fecha:</strong> {order.formattedDate}
-              </p>
-              <p>
-                <strong>Total:</strong> ${order.totalCalculated?.toFixed(2)}
-              </p>
-              <p>
-                <strong>Estado:</strong> {order.estado}
-              </p>
-              <table id={`table-${order.id}`}>
-                <thead>
-                  <tr>
-                    <th>Modelo</th>
-                    <th>Material</th>
-                    <th>Cantidad</th>
-                    <th>Variaciones</th>
-                    <th>Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.modelo}</td>
-                      <td
-                        onDoubleClick={() =>
-                          handleEditField(
-                            item.id,
-                            "material",
-                            item.material,
-                            "material"
-                          )
-                        }
-                      >
-                        {item.material || "Sin material"}
-                      </td>
-                      <td
-                        onDoubleClick={() =>
-                          handleEditField(
-                            item.id,
-                            "cantidad",
-                            item.cantidad,
-                            "cantidad"
-                          )
-                        }
-                      >
-                        {item.cantidad}
-                      </td>
-                      <td
-                        onDoubleClick={() =>
-                          handleEditField(
-                            item.id,
-                            "variaciones",
-                            item.variaciones,
-                            "variaciones"
-                          )
-                        }
-                      >
-                        {item.variaciones || "Sin variaciones"}
-                      </td>
-                      <td>${item.subtotal?.toFixed(2) || "0.00"}</td>
+            {order.expanded && (
+              <div className="order-details scrollable-table">
+                <p>
+                  <strong>Fecha:</strong> {order.formattedDate}
+                </p>
+                <p>
+                  <strong>Total:</strong> ${order.totalCalculated?.toFixed(2)}
+                </p>
+                <p>
+                  <strong>Estado:</strong> {order.estado}
+                </p>
+                <table id={`table-${order.id}`}>
+                  <thead>
+                    <tr>
+                      <th>Modelo</th>
+                      <th>Material</th>
+                      <th>Cantidad</th>
+                      <th>Variaciones</th>
+                      <th>Subtotal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ))}
+                  </thead>
+                  <tbody>
+                    {order.items.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.modelo}</td>
+                        <td
+                          onDoubleClick={() =>
+                            handleEditField(
+                              item.id,
+                              "material",
+                              item.material,
+                              "material"
+                            )
+                          }
+                        >
+                          {item.material || "Sin material"}
+                        </td>
+                        <td
+                          onDoubleClick={() =>
+                            handleEditField(
+                              item.id,
+                              "cantidad",
+                              item.cantidad,
+                              "cantidad"
+                            )
+                          }
+                        >
+                          {item.cantidad}
+                        </td>
+                        <td
+                          onDoubleClick={() =>
+                            handleEditField(
+                              item.id,
+                              "variaciones",
+                              item.variaciones,
+                              "variaciones"
+                            )
+                          }
+                        >
+                          {item.variaciones || "Sin variaciones"}
+                        </td>
+                        <td>${item.subtotal?.toFixed(2) || "0.00"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 };
