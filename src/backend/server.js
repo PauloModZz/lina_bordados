@@ -179,37 +179,42 @@ app.put("/api/pedidos/:id", async (req, res) => {
 
 // Actualizar el ítem
 app.put("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params; // ID del pedido
-  const { estado } = req.body; // Nuevo estado
+  const { id } = req.params; // ID del pedido a actualizar
+  const { estado } = req.body; // Estado nuevo para el pedido
 
-  // Validar que el estado no sea nulo
   if (!estado) {
     return res.status(400).json({ error: "El estado es obligatorio." });
   }
 
   try {
-    // Actualizar el pedido en la base de datos
+    console.log(`Actualizando el estado del pedido con ID: ${id} a estado: ${estado}`);
+
+    // Actualizar el pedido en Supabase
     const { data, error } = await supabase
       .from("pedidos")
       .update({ estado })
       .eq("id", id)
-      .select(); // Aseguramos devolver datos actualizados con .select()
+      .select(); // Usamos .select() para asegurarnos de recibir los datos actualizados
 
-    // Manejo de errores en la actualización
-    if (error) throw error;
+    console.log("Respuesta de Supabase:", data);
+
+    if (error) {
+      console.error("Error de Supabase:", error);
+      throw error;
+    }
 
     // Validar si no se encontraron filas actualizadas
     if (!data || data.length === 0) {
       return res.status(404).json({ error: `Pedido con ID ${id} no encontrado.` });
     }
 
-    // Respuesta exitosa
     res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
     console.error("Error al actualizar el pedido:", err.message);
     res.status(500).json({ error: "Error al actualizar el pedido." });
   }
 });
+
 
 
 
