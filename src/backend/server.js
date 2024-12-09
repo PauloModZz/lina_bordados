@@ -1,3 +1,4 @@
+//-------------------------------------------------------------------------------
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -14,14 +15,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
-// Obtener todos los pedidos
-
-app.get("/", (req, res) => {
-  res.send("Servidor funcionando correctamente en Render 🚀");
-});
-
-
+//-------------------------------------------------------------------------------
+// Crear un nuevo pedido
 app.get("/api/pedidos", async (req, res) => {
   try {
     // Selecciona pedidos e incluye los ítems relacionados
@@ -55,60 +50,6 @@ app.get("/api/pedidos", async (req, res) => {
     res.status(500).json({ error: "Error al obtener pedidos." });
   }
 });
-
-
-// Obtener un pedido por ID
-app.get("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params;
-
-  const query = `
-    SELECT p.id AS pedido_id, p.fecha, p.total, p.estado,
-           i.id AS item_id, i.modelo, i.cantidad, i.variaciones, i.subtotal
-    FROM pedidos p
-    LEFT JOIN items i ON p.id = i.pedido_id
-    WHERE p.id = $1
-  `;
-
-  try {
-    const { rows } = await pool.query(query, [id]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
-    }
-
-    const pedido = rows.reduce(
-      (acc, row) => {
-        if (!acc.id) {
-          acc.id = row.pedido_id;
-          acc.nombre = `Pedido #${row.pedido_id}`;
-          acc.fecha = row.fecha;
-          acc.total = row.total;
-          acc.estado = row.estado;
-          acc.items = [];
-        }
-
-        if (row.item_id) {
-          acc.items.push({
-            id: row.item_id,
-            modelo: row.modelo,
-            cantidad: row.cantidad,
-            variaciones: row.variaciones,
-            subtotal: row.subtotal,
-          });
-        }
-
-        return acc;
-      },
-      { id: null, nombre: null, fecha: null, total: null, estado: null, items: [] }
-    );
-
-    res.json(pedido);
-  } catch (err) {
-    console.error("Error al obtener el pedido:", err);
-    res.status(500).json({ error: "Error al obtener el pedido." });
-  }
-});
-
 // Crear un nuevo pedido
 app.post("/api/pedidos", async (req, res) => {
   const { total, estado } = req.body;
@@ -127,6 +68,43 @@ app.post("/api/pedidos", async (req, res) => {
     res.status(500).json({ error: "Error al crear el pedido." });
   }
 });
+// Obtener un pedido por ID
+app.get("/api/pedidos/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data: pedidos, error } = await supabase
+      .from("pedidos")
+      .select(
+        `
+        id, fecha, total, estado,
+        items (
+          id, modelo, cantidad, variaciones, material, subtotal
+        )
+        `
+      )
+      .eq("id", id);
+
+    if (error) throw error;
+
+    if (pedidos.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado." });
+    }
+
+    const pedido = pedidos[0];
+    res.json({
+      id: pedido.id,
+      nombre: `Pedido #${pedido.id}`,
+      fecha: pedido.fecha,
+      total: pedido.total,
+      estado: pedido.estado,
+      items: pedido.items || [],
+    });
+  } catch (err) {
+    console.error("Error al obtener el pedido:", err);
+    res.status(500).json({ error: "Error al obtener el pedido." });
+  }
+});
 
 // Agregar un ítem a un pedido
 app.post("/api/items", async (req, res) => {
@@ -136,22 +114,26 @@ app.post("/api/items", async (req, res) => {
     return res.status(400).json({ error: "Todos los campos son obligatorios, incluido el material." });
   }
 
-  const query = `
-    INSERT INTO items (pedido_id, modelo, cantidad, variaciones, material, subtotal)
-    VALUES ($1, $2, $3, $4, $5, $6)
-  `;
-
   try {
-    await pool.query(query, [pedidoId, modelo, cantidad, variaciones, material, subtotal]);
+    const { data, error } = await supabase
+      .from("items")
+      .insert({
+        pedido_id: pedidoId,
+        modelo,
+        cantidad,
+        variaciones,
+        material,
+        subtotal,
+      });
 
-    // Actualizar el total del pedido después de agregar el ítem
-    const updateTotalQuery = `
-      UPDATE pedidos
-      SET total = (SELECT SUM(subtotal) FROM items WHERE pedido_id = $1)
-      WHERE id = $1
-    `;
+    if (error) throw error;
 
-    await pool.query(updateTotalQuery, [pedidoId]);
+    // Actualizar el total del pedido
+    const { error: updateError } = await supabase.rpc("update_pedido_total", {
+      pedido_id: pedidoId,
+    });
+
+    if (updateError) throw updateError;
 
     res.json({ message: "Ítem agregado correctamente." });
   } catch (err) {
@@ -160,6 +142,7 @@ app.post("/api/items", async (req, res) => {
   }
 });
 
+// Actualizar el estado de un pedido
 app.put("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -168,17 +151,15 @@ app.put("/api/pedidos/:id", async (req, res) => {
     return res.status(400).json({ error: "El estado es obligatorio." });
   }
 
-  const query = `
-    UPDATE pedidos
-    SET estado = $1
-    WHERE id = $2
-    RETURNING id
-  `;
-
   try {
-    const { rows } = await pool.query(query, [estado, id]);
+    const { data, error } = await supabase
+      .from("pedidos")
+      .update({ estado })
+      .eq("id", id);
 
-    if (rows.length === 0) {
+    if (error) throw error;
+
+    if (data.length === 0) {
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
@@ -189,109 +170,36 @@ app.put("/api/pedidos/:id", async (req, res) => {
   }
 });
 
-// Actualizar un ítem
-app.put("/api/items/:id", async (req, res) => {
-  const { id } = req.params;
-  const { cantidad, variaciones, material } = req.body;
-
-  // Verifica que al menos uno de los campos a actualizar esté presente
-  if (!cantidad && !variaciones && !material) {
-    return res.status(400).json({
-      error: "Debe proporcionar cantidad, variaciones o material para actualizar.",
-    });
-  }
-
-  const updates = [];
-  const values = [];
-
-  if (cantidad) {
-    updates.push(`cantidad = $${updates.length + 1}`);
-    values.push(cantidad);
-  }
-
-  if (variaciones) {
-    updates.push(`variaciones = $${updates.length + 1}`);
-    values.push(variaciones);
-  }
-
-  if (material) {
-    updates.push(`material = $${updates.length + 1}`);
-    values.push(material);
-  }
-
-  const query = `
-    UPDATE items
-    SET ${updates.join(", ")}
-    WHERE id = $${updates.length + 1}
-    RETURNING id
-  `;
-
-  values.push(id);
-
-  try {
-    const { rows } = await pool.query(query, values);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Ítem no encontrado." });
-    }
-
-    res.json({ message: "Ítem actualizado correctamente." });
-  } catch (err) {
-    console.error("Error al actualizar el ítem:", err);
-    res.status(500).json({ error: "Error al actualizar el ítem." });
-  }
-});
-
 // Actualizar el ítem
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const { cantidad, variaciones, material } = req.body;
 
-  // Verifica que al menos uno de los campos a actualizar esté presente
   if (!cantidad && !variaciones && !material) {
     return res.status(400).json({
       error: "Debe proporcionar cantidad, variaciones o material para actualizar.",
     });
   }
 
-  const updates = [];
-  const values = [];
-
-  if (cantidad) {
-    updates.push(`cantidad = $${updates.length + 1}`);
-    values.push(cantidad);
-  }
-
-  if (variaciones) {
-    updates.push(`variaciones = $${updates.length + 1}`);
-    values.push(variaciones);
-  }
-
-  if (material) {
-    updates.push(`material = $${updates.length + 1}`);
-    values.push(material);
-  }
-
-  const query = `
-    UPDATE items
-    SET ${updates.join(", ")}
-    WHERE id = $${updates.length + 1}
-    RETURNING pedido_id, modelo
-  `;
-
-  values.push(id);
-
   try {
-    // Actualizamos el ítem y obtenemos datos adicionales
-    const { rows } = await pool.query(query, values);
+    // Actualizar el ítem
+    const { data: updatedItem, error: updateError } = await supabase
+      .from("items")
+      .update({
+        cantidad,
+        variaciones,
+        material,
+      })
+      .eq("id", id)
+      .select("pedido_id, modelo");
 
-    if (rows.length === 0) {
+    if (updateError) throw updateError;
+    if (updatedItem.length === 0) {
       return res.status(404).json({ error: "Ítem no encontrado." });
     }
 
-    const { pedido_id, modelo } = rows[0];
+    const { pedido_id, modelo } = updatedItem[0];
 
-    // Recalcular el subtotal del ítem si se cambió la cantidad
     if (cantidad) {
       // Define los precios por modelo
       const modelPrices = {
@@ -306,23 +214,20 @@ app.put("/api/items/:id", async (req, res) => {
       const precio = modelPrices[modelo] || 0;
       const nuevoSubtotal = cantidad * precio;
 
-      const updateSubtotalQuery = `
-        UPDATE items
-        SET subtotal = $1
-        WHERE id = $2
-      `;
+      // Actualizar subtotal
+      const { error: subtotalError } = await supabase
+        .from("items")
+        .update({ subtotal: nuevoSubtotal })
+        .eq("id", id);
 
-      await pool.query(updateSubtotalQuery, [nuevoSubtotal, id]);
+      if (subtotalError) throw subtotalError;
 
       // Recalcular el total del pedido
-      const updatePedidoQuery = `
-        UPDATE pedidos
-        SET total = (
-          SELECT COALESCE(SUM(subtotal), 0) FROM items WHERE pedido_id = $1
-        )
-        WHERE id = $1
-      `;
-      await pool.query(updatePedidoQuery, [pedido_id]);
+      const { error: totalError } = await supabase.rpc("update_pedido_total", {
+        pedido_id,
+      });
+
+      if (totalError) throw totalError;
 
       res.json({
         message: "Ítem y total del pedido actualizados correctamente.",
@@ -340,16 +245,16 @@ app.put("/api/items/:id", async (req, res) => {
 app.delete("/api/pedidos/:id", async (req, res) => {
   const { id } = req.params;
 
-  const query = `
-    DELETE FROM pedidos
-    WHERE id = $1
-    RETURNING id
-  `;
-
   try {
-    const { rows } = await pool.query(query, [id]);
+    const { data: deletedPedido, error } = await supabase
+      .from("pedidos")
+      .delete()
+      .eq("id", id)
+      .select("id");
 
-    if (rows.length === 0) {
+    if (error) throw error;
+
+    if (deletedPedido.length === 0) {
       return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
@@ -359,9 +264,7 @@ app.delete("/api/pedidos/:id", async (req, res) => {
     res.status(500).json({ error: "Error al eliminar el pedido." });
   }
 });
-
-
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  console.log(`Base de datos funcionando en el puerto: ${PORT}`);
 });
