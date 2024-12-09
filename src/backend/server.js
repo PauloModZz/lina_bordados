@@ -292,12 +292,21 @@ app.post("/api/pedidos-completo", async (req, res) => {
 // Crear un nuevo pedido con el primer ítem
 app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
-  const { cantidad, material, variaciones } = req.body;
+  const { cantidad, material, variaciones, modelo } = req.body;
+
+  const modelosPrecios = {
+    "Modelo 1 enconchado": 2.0,
+    "Modelo 2 Filo fino": 2.0,
+    "Modelo Ovalado": 2.0,
+    "Modelo Navidad #1 arbol": 2.25,
+    "Modelo Navidad #2 Hojas": 2.5,
+    "Servilletas": 1.0,
+  };
 
   // Validar campos obligatorios
-  if (cantidad === undefined && !material && !variaciones) {
+  if (!cantidad && !material && !variaciones && !modelo) {
     return res.status(400).json({
-      error: "Debe proporcionar al menos uno de los campos: cantidad, material o variaciones.",
+      error: "Debe proporcionar al menos uno de los campos: cantidad, material, variaciones o modelo.",
     });
   }
 
@@ -311,7 +320,7 @@ app.put("/api/items/:id", async (req, res) => {
         ...(variaciones && { variaciones }),
       })
       .eq("id", id)
-      .select("pedido_id, cantidad, precio_unitario");
+      .select("pedido_id, cantidad, modelo");
 
     if (itemError) {
       console.error("Error al actualizar ítem:", itemError);
@@ -323,12 +332,15 @@ app.put("/api/items/:id", async (req, res) => {
     }
 
     const pedidoId = updatedItem[0].pedido_id;
+    const modeloActual = updatedItem[0].modelo || modelo;
+    const precioUnitario = modelosPrecios[modeloActual] || 0;
+    const nuevoSubtotal = updatedItem[0].cantidad * precioUnitario;
 
-    // Recalcular el subtotal en la tabla 'items'
+    // Recalcular el subtotal
     const { error: subtotalError } = await supabase
       .from("items")
       .update({
-        subtotal: updatedItem[0].cantidad * updatedItem[0].precio_unitario,
+        subtotal: nuevoSubtotal,
       })
       .eq("id", id);
 
@@ -344,15 +356,19 @@ app.put("/api/items/:id", async (req, res) => {
 
     if (totalError) {
       console.error("Error al actualizar el total del pedido:", totalError);
-      return res.status(500).json({ error: "Error al actualizar el total." });
+      return res.status(500).json({ error: "Error al actualizar el total del pedido." });
     }
 
-    res.json({ message: "Ítem y total actualizados correctamente.", updatedItem });
+    res.json({
+      message: "Ítem y total actualizados correctamente.",
+      updatedItem,
+    });
   } catch (err) {
     console.error("Error general al actualizar el ítem:", err.message);
     res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
+
 
 
 // ================== Iniciar el servidor ==================
