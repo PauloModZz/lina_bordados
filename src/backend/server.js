@@ -1,3 +1,4 @@
+//-------------------------------------------------------------------------------
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -8,15 +9,13 @@ const PORT = 5000;
 
 // Configuración de Supabase
 const SUPABASE_URL = "https://zbvvnhrrrdffwjvnxyuz.supabase.co";
-const SUPABASE_KEY = "TU_SUPABASE_KEY";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpidnZuaHJycmRmZndqdm54eXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0NzU4NjIsImV4cCI6MjA0OTA1MTg2Mn0.2QvAtFoyn83RQq4I47OV11rLzeIYEFYmAJQ8sE_FOp8";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-
-// Endpoints optimizados
-
+//-------------------------------------------------------------------------------
 // Obtener todos los pedidos con ítems
 app.get("/api/pedidos", async (req, res) => {
   try {
