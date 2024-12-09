@@ -179,26 +179,31 @@ app.put("/api/pedidos/:id", async (req, res) => {
 
 // Actualizar el ítem
 app.put("/api/pedidos/:id", async (req, res) => {
-  const { id } = req.params;
-  const { estado } = req.body;
+  const { id } = req.params; // ID del pedido
+  const { estado } = req.body; // Nuevo estado
 
+  // Validar que el estado no sea nulo
   if (!estado) {
     return res.status(400).json({ error: "El estado es obligatorio." });
   }
 
   try {
+    // Actualizar el pedido en la base de datos
     const { data, error } = await supabase
       .from("pedidos")
       .update({ estado })
-      .eq("id", id);
+      .eq("id", id)
+      .select(); // Aseguramos devolver datos actualizados con .select()
 
+    // Manejo de errores en la actualización
     if (error) throw error;
 
-    // Cambia la validación para verificar si `data` es nulo o vacío
+    // Validar si no se encontraron filas actualizadas
     if (!data || data.length === 0) {
-      return res.status(404).json({ error: "Pedido no encontrado." });
+      return res.status(404).json({ error: `Pedido con ID ${id} no encontrado.` });
     }
 
+    // Respuesta exitosa
     res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
     console.error("Error al actualizar el pedido:", err.message);
