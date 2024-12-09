@@ -294,7 +294,7 @@ app.put("/api/items/:id", async (req, res) => {
   const { id } = req.params;
   const { cantidad, material, variaciones } = req.body;
 
-  // Validación de entradas
+  // Validar campos obligatorios
   if (cantidad === undefined && !material && !variaciones) {
     return res.status(400).json({
       error: "Debe proporcionar al menos uno de los campos: cantidad, material o variaciones.",
@@ -303,20 +303,19 @@ app.put("/api/items/:id", async (req, res) => {
 
   try {
     // Actualizar el ítem
-    const { data: updatedItem, error } = await supabase
+    const { data: updatedItem, error: itemError } = await supabase
       .from("items")
       .update({
         ...(cantidad !== undefined && { cantidad }),
         ...(material && { material }),
         ...(variaciones && { variaciones }),
-        subtotal: supabase.raw("cantidad * precio_unitario"),  // Recalcular subtotal
       })
       .eq("id", id)
-      .select("pedido_id");
+      .select("pedido_id, cantidad, precio_unitario");
 
-    if (error) {
-      console.error("Error al actualizar ítem:", error);
-      throw error;
+    if (itemError) {
+      console.error("Error al actualizar ítem:", itemError);
+      return res.status(500).json({ error: "Error al actualizar el ítem." });
     }
 
     if (!updatedItem || updatedItem.length === 0) {
@@ -325,6 +324,19 @@ app.put("/api/items/:id", async (req, res) => {
 
     const pedidoId = updatedItem[0].pedido_id;
 
+    // Recalcular el subtotal en la tabla 'items'
+    const { error: subtotalError } = await supabase
+      .from("items")
+      .update({
+        subtotal: updatedItem[0].cantidad * updatedItem[0].precio_unitario,
+      })
+      .eq("id", id);
+
+    if (subtotalError) {
+      console.error("Error al actualizar el subtotal:", subtotalError);
+      return res.status(500).json({ error: "Error al actualizar el subtotal." });
+    }
+
     // Actualizar el total del pedido
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
       pedido_id_param: pedidoId,
@@ -332,15 +344,16 @@ app.put("/api/items/:id", async (req, res) => {
 
     if (totalError) {
       console.error("Error al actualizar el total del pedido:", totalError);
-      throw totalError;
+      return res.status(500).json({ error: "Error al actualizar el total." });
     }
 
-    res.json({ message: "Ítem actualizado correctamente.", updatedItem });
+    res.json({ message: "Ítem y total actualizados correctamente.", updatedItem });
   } catch (err) {
     console.error("Error general al actualizar el ítem:", err.message);
     res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
+
 
 // ================== Iniciar el servidor ==================
 app.listen(PORT, () => {
