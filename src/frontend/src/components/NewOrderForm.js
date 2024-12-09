@@ -32,14 +32,22 @@ const NewOrderForm = () => {
     try {
       const response = await fetch(`${API_URL}/api/pedidos`);
       const data = await response.json();
-      setPedidos(data);
+
+      // Ordenar los pedidos por ID para mantener consistencia
+      const sortedPedidos = data.sort((a, b) => a.id - b.id);
+      setPedidos(sortedPedidos);
     } catch (error) {
       console.error("Error al cargar los pedidos:", error);
     }
   };
 
   useEffect(() => {
-    fetchPedidos();
+    fetchPedidos(); // Cargar pedidos al inicio
+    const interval = setInterval(() => {
+      fetchPedidos(); // Actualizar cada 5 segundos
+    }, 5000);
+
+    return () => clearInterval(interval); // Limpiar el intervalo al desmontar el componente
   }, []);
 
   const handleChange = (e) => {
@@ -68,18 +76,17 @@ const NewOrderForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (!formData.model || !formData.material) {
       alert("Por favor selecciona un modelo y un material.");
       return;
     }
-  
+
     const selectedModel = models.find((model) => model.name === formData.model);
     const subtotal = selectedModel.price * formData.quantity;
     const materialToSave =
       formData.material === "Otro" ? formData.customMaterial : formData.material;
-  
-    // Verificar que se hayan especificado todos los colores requeridos
+
     const requiredColors = getRequiredColors();
     for (const key of requiredColors) {
       if (!formData.colors[key]) {
@@ -87,11 +94,10 @@ const NewOrderForm = () => {
         return;
       }
     }
-  
+
     const formattedVariations = formatColors(formData.colors);
-  
+
     if (formData.nuevoPedido) {
-      // Crear nuevo pedido con el ítem
       try {
         const response = await fetch(`${API_URL}/api/pedidos-con-item`, {
           method: "POST",
@@ -106,10 +112,10 @@ const NewOrderForm = () => {
             subtotal,
           }),
         });
-  
+
         if (response.ok) {
           alert("Pedido y primer ítem creados correctamente.");
-          fetchPedidos(); // Actualizar la lista de pedidos
+          fetchPedidos(); // Actualizar lista de pedidos
         } else {
           const errorData = await response.json();
           alert(`Error: ${errorData.error}`);
@@ -119,12 +125,11 @@ const NewOrderForm = () => {
         alert("Error al crear el pedido y el ítem.");
       }
     } else {
-      // Agregar ítem a un pedido existente
       if (!formData.pedidoId) {
         alert("Por favor selecciona un pedido.");
         return;
       }
-  
+
       try {
         const response = await fetch(`${API_URL}/api/items`, {
           method: "POST",
@@ -138,10 +143,10 @@ const NewOrderForm = () => {
             subtotal,
           }),
         });
-  
+
         if (response.ok) {
           alert("Ítem agregado al pedido existente.");
-          fetchPedidos(); // Actualizar la lista de pedidos
+          fetchPedidos();
         } else {
           const errorData = await response.json();
           alert(`Error: ${errorData.error}`);
@@ -151,8 +156,7 @@ const NewOrderForm = () => {
         alert("Error al agregar el ítem.");
       }
     }
-  
-    // Reiniciar el formulario
+
     setFormData({
       model: "",
       quantity: 1,
@@ -163,10 +167,6 @@ const NewOrderForm = () => {
       nuevoPedido: false,
     });
   };
-  
-  
-  
-  
 
   return (
     <div className="new-order-form">

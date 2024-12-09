@@ -21,10 +21,16 @@ const Acciones = ({ onActionApply }) => {
     }
   };
 
-  // useEffect para cargar los pedidos al inicio
+  // useEffect para cargar los pedidos periódicamente
   useEffect(() => {
-    fetchPedidos();
-  }, []); // Se elimina el intervalo para evitar actualizaciones innecesarias
+    fetchPedidos(); // Carga inicial
+
+    const interval = setInterval(() => {
+      fetchPedidos(); // Actualiza los pedidos cada 3 segundos
+    }, 3000);
+
+    return () => clearInterval(interval); // Limpia el intervalo al desmontar el componente
+  }, []);
 
   // Manejar acciones de cambio de estado
   const handleAction = async (action) => {
@@ -114,7 +120,7 @@ const Acciones = ({ onActionApply }) => {
           <option value="">Selecciona un Pedido</option>
           {pedidos.map((pedido) => (
             <option key={pedido.id} value={pedido.id}>
-              {pedido.nombre}
+              Pedido #{pedido.id}
             </option>
           ))}
         </select>
