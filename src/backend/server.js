@@ -338,10 +338,9 @@ app.post("/api/pedidos-con-item", async (req, res) => {
 });
 // Actualizar ítem por ID
 app.put("/api/items/:id", async (req, res) => {
-  const { id } = req.params;  // ID del ítem a actualizar
+  const { id } = req.params; // ID del ítem
   const { cantidad, material, variaciones } = req.body;
 
-  // Verifica que al menos uno de los campos esté presente
   if (!cantidad && !material && !variaciones) {
     return res.status(400).json({
       error: "Debe proporcionar cantidad, material o variaciones para actualizar.",
@@ -349,7 +348,6 @@ app.put("/api/items/:id", async (req, res) => {
   }
 
   try {
-    // Actualiza el ítem según los campos proporcionados
     const { data, error } = await supabase
       .from("items")
       .update({
@@ -366,12 +364,17 @@ app.put("/api/items/:id", async (req, res) => {
       return res.status(404).json({ error: "Ítem no encontrado." });
     }
 
-    // Actualiza el total del pedido después de modificar el ítem
+    const pedidoId = data[0].pedido_id;
+
+    // Actualizar el total del pedido
     const { error: totalError } = await supabase.rpc("update_pedido_total", {
-      pedido_id: data[0].pedido_id,
+      pedido_id: pedidoId,
     });
 
-    if (totalError) throw totalError;
+    if (totalError) {
+      console.error("Error al actualizar el total del pedido:", totalError);
+      return res.status(500).json({ error: "Error al actualizar el total del pedido." });
+    }
 
     res.json({ message: "Ítem actualizado correctamente.", data });
   } catch (err) {
@@ -379,6 +382,7 @@ app.put("/api/items/:id", async (req, res) => {
     res.status(500).json({ error: "Error al actualizar el ítem." });
   }
 });
+
 
 
 
