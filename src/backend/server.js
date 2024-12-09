@@ -194,20 +194,18 @@ app.put("/api/pedidos/:id", async (req, res) => {
 
     if (error) throw error;
 
-    // En lugar de verificar length, verificamos si `data` tiene al menos un elemento o es nulo
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-      return res.status(200).json({
-        message: `Pedido #${id} actualizado a estado ${estado}, pero no se devolvieron datos.`,
-      });
+    // Cambia la validación para verificar si `data` es nulo o vacío
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado." });
     }
 
-    // Si todo fue bien y `data` contiene información
-    res.status(200).json({ message: `Pedido #${id} actualizado a estado ${estado}` });
+    res.json({ message: `Pedido #${id} actualizado a estado ${estado}` });
   } catch (err) {
     console.error("Error al actualizar el pedido:", err.message);
     res.status(500).json({ error: "Error al actualizar el pedido." });
   }
 });
+
 
 
 // Eliminar un pedido por ID
